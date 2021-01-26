@@ -1,136 +1,208 @@
 ## Interconnecting Networks
 
+### Cloud VPN
 
+**Cloud VPN** securely connects your on-premise network to your GCP VPC network through an IPSec VPN tunnel.  
+Traffic traveling between the two networks is encrypted by one VPN gateway. Then decrypted by the other VPN gateway. This protects your data as it travels over the public internet.  
+That's why Cloud VPN is useful for low volume data connections.  
 
-## Load Balancing and Autoscaling
-
-
-
-## Infrastructure Automation
-
-
-
-## Managed Services
-
-
-Cloud VPN securely connects your on-premise network to your GCP VPC network through an IPSec VPN tunnel. 
-Traffic traveling between the two networks is encrypted by one VPN gateway. Then decrypted by the other VPN gateway. This protects your data as it travels over the public internet. 
-That's why Cloud VPN is useful for low volume data connections. 
 As a managed service Cloud VPN provides an SLA of 99.9 percent service availability and supports:
-  - site to site VPN
-  - static and dynamic routes, 
-  - IKEv1 and IKEv2 ciphers. 
-Cloud VPN doesn't support new cases where a client computers need to dial in to a VPN using client VPN software. Also, dynamic routes are configured with Cloud Router which we will cover briefly for more information about the SLA and these features see the links section of this video. Let me walk through an example of Cloud VPN. 
-This diagram shows a simple VPN connection between your VPC and on-premise network. Your VPC network has subnets in US-east one and US-west one. With GCP resources in each of those regions. These resources are able to communicate using their internal IP addresses because routing within a network is automatically configured, assuming that firewall rules allow the communication. Now, in order to connect to your on-premise network and its resources you need to configure your Cloud VPN gateway on-premise VPN gateway and to VPN tunnels. 
-The Cloud VPN gateway is a regional resource that uses a regional external IP address. Your on-premise VPN gateway can be a physical device in your data center or a physical or software based VPN offering in another Cloud providers network. This VPN gateway also has an external IP address. A VPN tunnel then connects your VPN gateways and serves as the virtual medium through which encrypted traffic is passed. In order to create a connection between two VPN gateways you must establish two VPN tunnels. 
-Each tunnel defines the connection from the perspective of its gateway and traffic can only pass when the pair of tunnels established. Now, one thing to remember when using Cloud VPN is that the maximum transmission unit or MTU for your on-premises VPN gateway cannot be greater than 1,460 bytes. This is because of the encryption and encapsulation of packets. For more information about this empty you consideration see the links section of this video. I mentioned earlier that Cloud VPN supports both static and dynamic routes. 
-In order to use dynamic routes you need to configure Cloud Router. Cloud Router can manage routes from Cloud VPN tunnel using border gateway protocol or BGP. This routing method allows for routes to be updated and exchanged without changing the tunnel configuration. For example, this diagram shows two different regional subnets in a VPC network namely tests and prod. 
-The on-premise network has 29 subnets and the two networks are connected through Cloud VPN tunnels. Now, how would you handle adding new subnets? For example, how would you add a new staging subnet in the GCP network and a new on-premise 10.0.30.0/24 subnet to handle growing traffic in your data center? To automatically propagate network configuration changes the VPN tunnel uses Cloud Router to establish a BGP session between the VPC and the on-premise VPN gateway which must support BGP. 
-The new subnets are then seamlessly advertised between networks. This means that instances in the new subnets can start sending and receiving traffic immediately as you will explore in the upcoming lab. 
-To set up BGP an additional IP address has to be assigned to each end of the VPN tunnel. These two IP addresses must be link-local IP addresses. Belonging to the IP address range 169.254.0.0/16. These addresses are not part of IP address space of either network and are used exclusively for establishing a BGP session.
 
-In this lab, you configured a VPN connection between two networks with subnets in different regions. Then you verified the VPN connection by pinging VMs in different networks, using their internal IP addresses. You configured the VPN gateways and tunnels using the GCP Console. However, this approach obfuscated the creation affording rules, which you explored with the command line button in the GCP Console. This can help in troubleshooting a configuration. You can stay for a lab walk through, but remember, the GCP's user interface can change. So you're environment might look slightly different. So here I am in the GCP Console, and what's special about this lab is that we've already pre-created some resources for you. You can see here under the Resources tab that I have tow Compute Engine instances. If you're curious on how this was generated, you can go to the navigation menu. If we scroll down to Deployment Manager, which we'll learn about later in this course, you will see that there was a configuration setup here to create this VPN network with a subnet, a firewall rule for SSH, for ICMP. Another network with a subnet SSH, ICMP firewall rule, and then two instances. If you go in here, you can see all of the different files that were used to create that. So you could actually use those files and automatically create your own infrastructure, or just hang on until we cover that later in the course. Now, the lab instructions start by asking us to review these resources. Specifically, we're going to go to VPC network, and look at the networks that were generated. Every network always comes with a default network. So that's already here. Here, we see vpn network 1 and vpn network 2, along with its' two subnets. One in us-central1, and the other one in europe-west1. If I click on firewall rules, we should see the automatic default rules that are generated, and then also the four firewall rules that we just created for ICMP and SSH for the two different networks. Now, I can also navigate to the instances by going to Compute Engine, and here we see the two different instances. I can collapse this over here. One thing that's interesting is we can actually add another column, so that we can easily see which networks these two instances belong to. So if I click on columns and scroll down here, I can select network. Here, we can now see that these actually belong to two different networks. You can actually get more information on the network if we click on nic0 here, which is your network interface. We can again see the network, we see the subnet, we see all the firewall rule, we can see the routes, so you can get a lot more information about the network interface from your Compute Engine instances. So what we want to do now is we want to be able to ping between these two VM instances. For now, you're only going to be able to do that using the external IP, because these are in two separate networks. Once we'll enable Cloud VPN, we'll also be able to ping the internal address. So let's verify that. I'm going to grab the external IP from server 2, and I'm going to SSH into server 1. So let me go in here, and I'm going to use the ping command and ping three times that external IP, and we can see that that is successful. Now, I'm going to try the same thing. But this time, I'm going to enter the internal IP address, which we can see over here is 10.1.3.2.
-We're not getting any responses back, and we can wait for this to time-out, but this is expected. We should be seeing 100 percent packet loss because we don't have the VPN connection yet. These are on two separate networks. There we go. So 100 percent loss. We can also try the same thing from the other instance. So let me grab the external IP from server 1, SSH there, and we'll repeat the same. We'll first ping the external address, and that works just fine. Then let's try to ping the internal IP address. Just 10.5.4.2. Again, we can see that this is not working. So you might ask why we're doing both of these. For the purpose of lab, the path from subnet A to subnet B is not the same as a path from subnet B to subnet A, and that's why we're verifying that. We'll do that again once we actually create the VPN gateways. So I can go close this now and, let's actually create the VPN gateways. Now, one thing that's really useful to do when you have a VPN gateway is to actually reserve a static IP address. So first, in going to VPC network through the navigation menu, I'm going to click on external IP addresses, and we want to reserve IP addresses for both of the gateways. You can see that we already have some IP addresses. These are the ephemeral ones of our instances. So I'm going to click on Reserve. I give it a name, o I'm going to use IP version 4, and this is going to be in us-central1. Click Reserve, and we're going to repeat the same. So this is for network 1 where the subnet is in us-central1. But for network 2, this subnetwork is in europe-west1. So we're going to make sure that when we create the second one, we change this to europe-west1, and then click Reserve. Now, it's currently saying that these are not being used. So obviously, we're going to change that in a second. We're going to go ahead to the navigation menu, and VPN is under the hybrid connectivity. So here we go to VPN. We want to create a VPN connection. There are two options. For the purpose of the lab, we're going to stick with the classic VPN. Then we're going to start off by defining the VPN gateways. So I give it a name vpn1. I need to choose any network, so this is network 1. That is in this region us-central1. I use the IP address. I could also have created that IP address in here, but here it is already, so I can just use that IP address. Then I go create the tunnel. So I'm going to create the tunnel from one to two. Now, I need to define the remote IP address, and this is why we pre-created the IP addresses, because here I now need to grab that other IP address. So in my case, I'm going to open a new tab and just navigate there, so that we can copy and paste that IP address. So let me go to VPC network, external IP addresses. Again, this is the remote. So here, I need to select that second IP address. So let me grab that, copy that, and paste that in here as the remote IP address. Then I also need to have a pre-shared key. In this case, we're just going to use the one from the lab instructions, and I have different routing options. In our case, we're going to go route-based. Then I need to define the remote network IP ranges, and this is just directly from the network, that subnet that we have in that other network. Now, this is great to create this through the Console, but if I click here on command line, we get all of the different commands that are being used for that. So you can see we're creating the VPN gateway, and it makes sense, but then we're creating all of these forwarding rules and the tunnel, and then we creating routes. So again, this is all obfuscated as I mentioned earlier, but you can get to that information by just clicking on command line. Then we're not going to run this in Console, we're still just going to click Create,
-and while this is creating, we can actually go ahead and create the next one. So I'm going to go to the VPN setup wizard. Again, we're using classic VPN, VPN2, I'm going to use the second network that we have. That is going to be in a different region, europe-west1. I want to grab the IP address on there. We can change the name of the tunnel. It's not really going to affect the functionality, but this is what we have in the lab instructions. Now, the remote peer IP address. Now, I need to grab that IP address from vpn 1 static. That's here. So let me copy and paste that in there. The same key as earlier, we're going to go route-based again, and I need to give it more information about the site arrange of the subnet. So I'm going to paste that in there. Now, I can click Create.
+- site to site VPN
+- static and dynamic routes, 
+- IKEv1 and IKEv2 ciphers. 
+
+Cloud VPN doesn't support new cases where a client computers need to dial in to a VPN using client VPN software. Also, **dynamic routes are configured with Cloud Router** which we will cover briefly for more information about the SLA and these features see the links section of this video. Let me walk through an example of Cloud VPN.
+
+This diagram shows a simple VPN connection between your VPC and on-premise network. Your VPC network has subnets in US-east one and US-west one. With GCP resources in each of those regions. These resources are able to communicate using their internal IP addresses because **routing within a network is automatically configured**, assuming that firewall rules allow the communication. Now, in order to connect to your on-premise network and its resources you need to configure your Cloud VPN gateway on-premise VPN gateway and to VPN tunnels. 
+
+**The Cloud VPN gateway** is a **regional** resource that uses a **regional external IP address**. Your on-premise VPN gateway can be a physical device in your data center or a physical or software based VPN offering in another Cloud providers network. This VPN gateway also has an external IP address. A VPN tunnel then connects your VPN gateways and serves as the virtual medium through which encrypted traffic is passed.
+
+In order to create a connection between two VPN gateways you must establish **two VPN tunnels**. 
+Each tunnel defines the connection from the perspective of its gateway and traffic can only pass when the pair of tunnels established. Now, one thing to remember when using Cloud VPN is that the maximum transmission unit or **MTU** for your on-premises VPN gateway cannot be greater than 1,460 bytes. This is because of the encryption and encapsulation of packets. For more information about this empty you consideration see the links section of this video. I mentioned earlier that Cloud VPN **supports both static and dynamic routes**. 
+
+In order to use dynamic routes you need to configure Cloud Router. Cloud Router can manage routes from Cloud VPN tunnel using border gateway protocol or **BGP**. This routing method allows for routes to be updated and exchanged without changing the tunnel configuration. For example, this diagram shows two different regional subnets in a VPC network namely tests and prod. 
+
+The on-premise network has 29 subnets and the two networks are connected through Cloud VPN tunnels. Now, how would you handle adding new subnets? For example, how would you add a new staging subnet in the GCP network and a new on-premise 10.0.30.0/24 subnet to handle growing traffic in your data center? To automatically propagate network configuration changes the VPN tunnel uses Cloud Router to establish a BGP session between the VPC and the on-premise VPN gateway which must support BGP. 
+
+The new subnets are then **seamlessly advertised between networks**. This means that instances in the new subnets can start sending and receiving traffic immediately as you will explore in the upcoming lab. 
+**To set up BGP an additional IP address has to be assigned to each end of the VPN tunnel**. These two IP addresses must be **link-local IP addresses**. Belonging to the IP address range 169.254.0.0/16. These addresses are not part of IP address space of either network and are used exclusively for establishing a BGP session.
+
+### Lab Review: Virtual Private Networks (VPN)
+
+In this lab, you configured a VPN connection between two networks with subnets in different regions. Then you verified the VPN connection by pinging VMs in different networks, using their internal IP addresses. You configured the VPN gateways and tunnels using the GCP Console. However, this approach obfuscated the creation affording rules, which you explored with the command line button in the GCP Console. This can help in troubleshooting a configuration. You can stay for a lab walk through, but remember, the GCP's user interface can change. So you're environment might look slightly different. 
+
+So here I am in the GCP Console, and what's special about this lab is that we've already pre-created some resources for you. You can see here under the Resources tab that I have tow Compute Engine instances. If you're curious on how this was generated, you can go to the navigation menu. If we scroll down to Deployment Manager, which we'll learn about later in this course, you will see that there was a configuration setup here to create this VPN network with a subnet, a firewall rule for SSH, for ICMP. 
+
+Another network with a subnet SSH, ICMP firewall rule, and then two instances. If you go in here, you can see all of the different files that were used to create that. So you could actually use those files and automatically create your own infrastructure, or just hang on until we cover that later in the course. Now, the lab instructions start by asking us to review these resources.  
+Specifically, we're going to go to VPC network, and look at the networks that were generated. Every network always comes with a default network. So that's already here. Here, we see vpn network 1 and vpn network 2, along with its' two subnets. One in us-central1, and the other one in europe-west1. If I click on firewall rules, we should see the automatic default rules that are generated, and then also the four firewall rules that we just created for ICMP and SSH for the two different networks. 
+
+Now, I can also navigate to the instances by going to Compute Engine, and here we see the two different instances. I can collapse this over here. One thing that's interesting is we can actually add another column, so that we can easily see which networks these two instances belong to. So if I click on columns and scroll down here, I can select network.  
+Here, we can now see that these actually belong to two different networks. You can actually get more information on the network if we click on nic0 here, which is your network interface. We can again see the network, we see the subnet, we see all the firewall rule, we can see the routes, so you can get a lot more information about the network interface from your Compute Engine instances. 
+
+So what we want to do now is we want to be able to ping between these two VM instances. For now, you're only going to be able to do that using the external IP, because these are in two separate networks. Once we'll enable Cloud VPN, we'll also be able to ping the internal address.  
+So let's verify that. I'm going to grab the external IP from server 2, and I'm going to SSH into server 1. So let me go in here, and I'm going to use the ping command and ping three times that external IP, and we can see that that is successful. Now, I'm going to try the same thing. But this time, I'm going to enter the internal IP address, which we can see over here is 10.1.3.2.
+
+We're not getting any responses back, and we can wait for this to time-out, but this is expected. We should be seeing 100 percent packet loss because we don't have the VPN connection yet. These are on two separate networks. There we go. So 100 percent loss.  
+We can also try the same thing from the other instance. So let me grab the external IP from server 1, SSH there, and we'll repeat the same. We'll first ping the external address, and that works just fine. Then let's try to ping the internal IP address. Just 10.5.4.2. Again, we can see that this is not working. 
+
+So you might ask why we're doing both of these. For the purpose of lab, the path from subnet A to subnet B is not the same as a path from subnet B to subnet A, and that's why we're verifying that. We'll do that again once we actually create the VPN gateways. So I can go close this now and, let's actually create the VPN gateways.  
+Now, one thing that's really useful to do when you have a VPN gateway is to actually reserve a static IP address. So first, in going to VPC network through the navigation menu, I'm going to click on external IP addresses, and we want to reserve IP addresses for both of the gateways. You can see that we already have some IP addresses. These are the ephemeral ones of our instances. 
+
+So I'm going to click on Reserve. I give it a name, o I'm going to use IP version 4, and this is going to be in us-central1. Click Reserve, and we're going to repeat the same. So this is for network 1 where the subnet is in us-central1. But for network 2, this subnetwork is in europe-west1. So we're going to make sure that when we create the second one, we change this to europe-west1, and then click Reserve. Now, it's currently saying that these are not being used. So obviously, we're going to change that in a second. We're going to go ahead to the navigation menu, and VPN is under the hybrid connectivity. So here we go to VPN. We want to create a VPN connection. There are two options. For the purpose of the lab, we're going to stick with the classic VPN. Then we're going to start off by defining the VPN gateways. So I give it a name vpn1. I need to choose any network, so this is network 1. That is in this region us-central1. I use the IP address. I could also have created that IP address in here, but here it is already, so I can just use that IP address. Then I go create the tunnel. So I'm going to create the tunnel from one to two. Now, I need to define the remote IP address, and this is why we pre-created the IP addresses, because here I now need to grab that other IP address.
+
+So in my case, I'm going to open a new tab and just navigate there, so that we can copy and paste that IP address. So let me go to VPC network, external IP addresses. Again, this is the remote. So here, I need to select that second IP address. So let me grab that, copy that, and paste that in here as the remote IP address. Then I also need to have a pre-shared key. In this case, we're just going to use the one from the lab instructions, and I have different routing options. In our case, we're going to go route-based. Then I need to define the remote network IP ranges, and this is just directly from the network, that subnet that we have in that other network. Now, this is great to create this through the Console, but if I click here on command line, we get all of the different commands that are being used for that. So you can see we're creating the VPN gateway, and it makes sense, but then we're creating all of these forwarding rules and the tunnel, and then we creating routes. So again, this is all obfuscated as I mentioned earlier, but you can get to that information by just clicking on command line. 
+
+Then we're not going to run this in Console, we're still just going to click Create,and while this is creating, we can actually go ahead and create the next one. So I'm going to go to the VPN setup wizard. Again, we're using classic VPN, VPN2, I'm going to use the second network that we have. That is going to be in a different region, europe-west1. I want to grab the IP address on there. We can change the name of the tunnel. It's not really going to affect the functionality, but this is what we have in the lab instructions. Now, the remote peer IP address. Now, I need to grab that IP address from vpn 1 static. That's here. So let me copy and paste that in there. The same key as earlier, we're going to go route-based again, and I need to give it more information about the site arrange of the subnet. So I'm going to paste that in there. Now, I can click Create.
+
 So now, we can see here that we have the gateways that are being created. That one has already created, so it's creating the other one. I can also look at the tunnels. You can see that one tunnel is created here, we can see the status, and now we can wait for these to change to established, before continuing. So you can see now that the VPN tunnel is established. I actually click Refresh. So if you're stuck for a while, feel free to just click on refresh and see if that updates it. Now, what we're going to do is actually verify the VPN connectivity. So now that this is established, we should be able to ping using the external and internal IP addresses. So let's verify that. I'm going to navigate back to Compute Engine, where we have our two instances, and we already know that the external IP address works. So let me just grab the internal IP address of server 2. Then let's SSH to server 1, and in there we'll ping that internal IP address,
 and there we can see that that is working, so all of the packets were transmitted. Then let's try it also from the other side. I'm going to grab the internal IP of server 1, and go to server 2, and try to ping that as well, and that works as well. That's the end of the lab.
 
-Next, let's talk about Cloud Interconnect and Peering services. 
+### Cloud Interconnect and Peering
+
+Next, let's talk about Cloud Interconnect and Peering services.  
 There are different Cloud Interconnect and Peering services available to connect your infrastructure to Google's network. These services can be split into dedicated versus shared connections and layer two verses layer three connections. 
+
 The services are: 
-  - Direct Peering, 
-  - Carrier Peering, 
-  - Dedicated Interconnect, 
-  - Partner Interconnect. 
-Dedicated connections provide a direct connection to Google's network. But, shared connections provide a connection to Google's network through a partner. Layer two connections use a VLAN that pipes directly into your GCP environment, providing connectivity to internal IP addresses in the RFC 1918 address space. 
-Layer three connections provide access to G Suite services, YouTube and Google Cloud APIs using public IP addresses. Now as I just explained earlier, Google also offers its own Virtual Private Network service called Cloud VPN. This service uses the public Internet but traffic is encrypted and provides access to internal IP addresses. That's why Cloud VPN is a useful addition to Direct Peering and Carrier Peering. Let me explain the Cloud Interconnect and Peering services separately first and then I'll provide some guidance on choosing the right connection.
 
-Dedicated Interconnect provides direct physical connections between your On-premise network and Google's network. 
-This enables you to transfer a large amount of data between networks which can't be more cost-effective than purchasing additional bandwidth over the public Internet. 
-In order to use Dedicated Interconnect, you need to provision a cross-connect between the Google network and your own router in a common co-location facility, as shown in this diagram. To exchange routes between the networks, you configure a BGP session over the interconnect between the Cloud Router and the On-premise router. 
-This will allow user traffic from the on-premise network to reach GCP resources on the VPC network and vice-versa. 
-Dedicated Interconnect can be configured to offer a 99.9 percent or a 99.99 percent uptime SLA. See the Dedicated Interconnect documentation for details on how to achieve these SLAs. 
-In order to use Dedicated Interconnect, your network must physically meet Google's network in a supported co-location facility. This map shows the location where you can create dedicated connections. For a full list of these locations, see the link section of this video. 
-Now you might look at this map and say well I am nowhere near one of these locations. That's when you want to consider a Partner Interconnect. 
-Partner Interconnect provides connectivity between your on-premise network and your VPC network through a supported service provider. 
-This is useful if your data center is in the physical location that cannot reach a Dedicated Interconnect co-location facility or if your data needs don't warrant a Dedicated Interconnect. 
-In order to use Partner Interconnect, you work with the supported service provider to connect your VPC and on-premise networks. For a full list of providers, see the link section of this video. These service providers have existing physical connections to Google's network that they make available for their customers to use. 
-After you establish connectivity with the service provider, you can request a Partner Interconnect connection from your service provider then establish a BGP session between your Cloud Router and On-premise Router to start passing traffic between your networks via the service providers network. Partner Interconnect can be configured to offer a 99.9 percent or 99.99 percent uptime SLA between Google and the service provider. See the Partner Interconnect documentation for details on how to achieve these SLAs. 
-Let me compare the Interconnect options that we just discussed. 
-All of these options provide internal IP address access between resources in your On-premise network and in your VPC network. The main differences are the connection capacity and the requirements for using a service. The IPSec VPN tunnels that Cloud VPN offers have a capacity of 1.5 to 3 Gbps per tunnel and require VPN device on your On-premise network. 
-The 1.5 Gbps capacity applies to the traffic that traverses the public Internet and the three Gbps capacity applies to the traffic that is traversing a Direct Peering link. 
-You can configure multiple tunnels if you want to scale this capacity. 
-Dedicated Interconnect has a capacity of 10 Gbps per link and requires you to have a connection in a Google supported co-location facility. You can have up to eight links to achieve multiples of 10 Gbps by 10 Gbps is the minimum capacity. As of this recording, there is a Beta feature that provides 100 Gbps per link with a maximum of two links. Keep in mind that features that are in beta are not covered by any SLA or deprecation policies and might be subject to backward-incompatible changes. 
-Partner Interconnect has a capacity of 50 Mbps to 10 Gbps per connection and requirements depend on the service provider. My recommendation is to start with VPN tunnels. When you need enterprise-grade connection to GCP, switch to Dedicated Interconnect or Partner Interconnect depending on your proximity to a co-location facility and your capacity requirements.
+- Direct Peering, 
+- Carrier Peering, 
+- Dedicated Interconnect, 
+- Partner Interconnect. 
 
-Let's talk about the Cloud Peering services which are Direct Peering and Carrier Peering. These services are useful when you require access to Google and Google Cloud properties. 
-Google allows you to establish a direct peering connection between your business network and Google's. With this connection, you will be able to exchange internet traffic between your network and Google's at one of the Google's broad-reaching Edge network locations. 
-Direct Peering with Google is done by exchanging BGP routes between Google and the peering entity. After a direct peering connection is in place, you can use it to reach all the Google's services including the full suite of Google Cloud Platform products. 
-Unlike dedicated interconnect, direct peering does not have an SLA. 
-In order to use direct peering, you need to satisfy the peering requirements in the links section of this video. GCP's Edge points of presence or PoPs are where Google's network connects to the rest of the internet via peering. PoPs are present on over 90 internet exchanges and at over 100 interconnection facilities around the world. For more information about these exchange points and facilities, I recommend looking at Google's PeeringDB entries, which are linked below this video. 
-If you look at this map and say, "hey, I am nowhere near one of these locations," you will want to consider Carrier Peering. If you require access to Google public infrastructure and cannot satisfy Google's peering requirements, you can connect via a carrier peering partner. 
+### Cloud Interconnect
+
+Dedicated connections provide a direct connection to Google's network. But, shared connections provide a connection to Google's network through a partner. 
+
+**Layer two connections use a VLAN** that pipes directly into your GCP environment, providing connectivity to internal IP addresses in the RFC 1918 address space. 
+
+**Layer three connections provide access to G Suite services, YouTube and Google Cloud APIs using public IP addresses**. 
+
+Now as I just explained earlier, Google also offers its own Virtual Private Network service called **Cloud VPN**. This service uses the public Internet but traffic is **encrypted** and provides access to **internal** IP addresses. That's why Cloud VPN is a useful addition to Direct Peering and Carrier Peering. Let me explain the Cloud Interconnect and Peering services separately first and then I'll provide some guidance on choosing the right connection.
+
+**Dedicated Interconnect** provides **direct physical** connections between your On-premise network and Google's network. 
+
+This enables you to transfer a large amount of data between networks which can't be more cost-effective than purchasing additional bandwidth over the public Internet.  
+In order to use Dedicated Interconnect, you need to provision a **cross-connect between the Google network and your own router in a common co-location facility**, as shown in this diagram. To exchange routes between the networks, you configure a BGP session over the interconnect between the Cloud Router and the On-premise router.  
+This will allow user traffic from the on-premise network to reach GCP resources on the VPC network and vice-versa.  
+Dedicated Interconnect can be configured to offer a 99.9 percent or a 99.99 percent uptime SLA. See the Dedicated Interconnect documentation for details on how to achieve these SLAs.  
+In order to use Dedicated Interconnect, your network must physically meet Google's network in a supported co-location facility. This map shows the location where you can create dedicated connections. For a full list of these locations, see the link section of this video.  
+Now you might look at this map and say well I am nowhere near one of these locations. That's when you want to consider a Partner Interconnect.  
+
+**Partner Interconnect** provides connectivity between your on-premise network and your VPC network through a supported **service provider**.  
+This is useful if your data center is in the physical location that cannot reach a Dedicated Interconnect co-location facility or if your data needs don't warrant a Dedicated Interconnect.  
+In order to use Partner Interconnect, you work with the supported service provider to connect your VPC and on-premise networks. For a full list of providers, see the link section of this video. These service providers have existing physical connections to Google's network that they make available for their customers to use.  
+After you establish connectivity with the service provider, you can request a Partner Interconnect connection from your service provider then establish a **BGP session** between your Cloud Router and On-premise Router to start passing traffic between your networks via the service providers network. Partner Interconnect can be configured to offer a 99.9 percent or 99.99 percent uptime SLA between Google and the service provider. See the Partner Interconnect documentation for details on how to achieve these SLAs.  
+
+Let me compare the Interconnect options that we just discussed.  
+All of these options provide internal IP address access between resources in your On-premise network and in your VPC network. The main differences are the **connection capacity** and the **requirements** for using a service.  
+The IPSec VPN tunnels that Cloud VPN offers have a capacity of 1.5 to 3 Gbps per tunnel and require VPN device on your On-premise network. 
+The 1.5 Gbps capacity applies to the traffic that traverses the public Internet and the three Gbps capacity applies to the traffic that is traversing a Direct Peering link.  
+You can configure multiple tunnels if you want to scale this capacity.  
+Dedicated Interconnect has a capacity of **10 Gbps per link** and requires you to have a connection in a Google supported co-location facility. You can have up to **eight links** to achieve multiples of 10 Gbps by 10 Gbps is the minimum capacity. As of this recording, there is a Beta feature that provides 100 Gbps per link with a maximum of two links. Keep in mind that features that are in beta are not covered by any SLA or deprecation policies and might be subject to backward-incompatible changes.  
+Partner Interconnect has a capacity of **50 Mbps to 10 Gbps** per connection and requirements depend on the service provider. 
+
+My recommendation is to start with VPN tunnels. When you need enterprise-grade connection to GCP, switch to Dedicated Interconnect or Partner Interconnect depending on your proximity to a co-location facility and your capacity requirements.
+
+### Peering
+
+Let's talk about the Cloud Peering services which are Direct Peering and Carrier Peering. These services are useful when you require access to Google and Google Cloud properties.  
+Google allows you to establish a direct peering connection between your business network and Google's. With this connection, you will be able to exchange internet traffic between your network and Google's at one of the Google's broad-reaching Edge network locations.  
+
+**Direct Peering** with Google is done by exchanging BGP routes between Google and the peering entity. After a direct peering connection is in place, you can use it to reach all the Google's services including the full suite of Google Cloud Platform products.  
+Unlike dedicated interconnect, direct peering does not have an SLA.  
+In order to use direct peering, you need to satisfy the **peering requirements** in the links section of this video. GCP's Edge points of presence or PoPs are where Google's network connects to the rest of the internet via peering. PoPs are present on over 90 internet exchanges and at over 100 interconnection facilities around the world. For more information about these exchange points and facilities, I recommend looking at Google's PeeringDB entries, which are linked below this video.  
+
+If you look at this map and say, "hey, I am nowhere near one of these locations," you will want to consider **Carrier Peering**. If you require access to Google public infrastructure and cannot satisfy Google's peering requirements, you can connect via a carrier peering partner.  
 Work directly with your service provider to get the connection you need and to understand the partners requirements. For a full list of available service providers, see the links section of this video. Now, just like direct peering, carrier peering also does not have an SLA. 
-Let me compare the peering options that we just discussed. All of these options provide public IP address access to all of Google's services. The main differences are capacity and the requirements for using a service. 
-Direct peering has a capacity of 10Gbps per link and requires you to have a connection in a GCP Edge point of presence. 
-Carrier peering's capacity and requirements vary depending on the service provider that you work with.
 
-Now that we have discussed all the different collection services, let me help you determine which service best meets your hybrid connectivity needs. 
-I started this lesson by introducing the five different ways to connect your infrastructure to GCP. 
+Let me compare the peering options that we just discussed. All of these options provide public IP address access to all of Google's services. The main differences are capacity and the requirements for using a service.  
+**Direct peering** has a capacity of **10Gbps per link** and requires you to have a connection in a GCP Edge point of presence.  
+Carrier peering's capacity and requirements vary depending on the service provider that you work with. 
+
+### Choosing a connection
+
+Now that we have discussed all the different connection services, let me help you determine which service best meets your hybrid connectivity needs.  
+I started this lesson by introducing the five different ways to connect your infrastructure to GCP.  
 I split the services into dedicated versus shared connections, and layer two versus layer three connections. Another way to organize these services is by interconnect services and by peering services. Interconnect services provide direct access to RFC1918 IP addresses in your VPC with an SLA. Peering services, in contrast, offer access to Google public IP addresses only without an SLA. 
+
 Another way to choose the right service that meets your needs is with a flow diagram. Let me walk you through this diagram from the top using the assumptions that you want to extend your infrastructure to the cloud. Ask yourself whether you need to extend your network for G Suite services, YouTube, or Google Cloud APIs. If you do, choose one of the peering services. 
+
 If you can meet Google's direct peering requirements, choose direct peering, otherwise, choose carrier peering. If you don't need to extend your network for G Suite services or Google Cloud APIs, but want to extend the reach of your network to GCP, you want to pick one of the Interconnect services. If you cannot meet Google at one of its co-location facilities, choose Cloud VPN or partner interconnect. 
-This choice will depend on your bandwidth and encryption requirements along with the purpose of the connection. 
-Specifically, if you have modest bandwidth needs, we'll use the connection for short durations and trials and require an encrypted channel, choose cloud VPN, otherwise, choose partner interconnect. 
-If you can meet Google at one of its co-location facilities, you might jump to dedicated interconnect. 
+
+This choice will depend on your bandwidth and encryption requirements along with the purpose of the connection.  
+Specifically, if you have modest bandwidth needs, we'll use the connection for short durations and trials and require an encrypted channel, choose cloud VPN, otherwise, choose partner interconnect.  
+If you can meet Google at one of its co-location facilities, you might jump to dedicated interconnect.  
 However, if you cannot provide your own encryption mechanism for sensitive traffic, feel that a 10 Gbps connection is too big, or want access to multiple clouds, you will want to consider cloud VPN or partner interconnect instead.
 
-L3:
-  - Direct peering - dedicated
-  - Carrier Peering - shared
-  - Cloud VPN - both dedicated and shared
-L2:
-  - Dedicated interconnect - dedicated
-  - Partner Interconnect - shared
+**L3:**
 
-Let's move our attention from hybrid connectivity to shared VPC networks. 
+- Direct peering - dedicated
+- Carrier Peering - shared
+- Cloud VPN - both dedicated and shared
+
+
+
+**L2:**
+
+- Dedicated interconnect - dedicated
+- Partner Interconnect - shared
+
+### Shared VPC and VPC Peering
+
+Let's move our attention from hybrid connectivity to **shared VPC networks**.  
 In the simplest Cloud environment, a single project might have one VPC network, spanning many regions with VM instances hosting very large and complicated applications. However, many organizations commonly deploy multiple isolated projects with multiple VPC networks and sublets. In this lesson, we are going to cover two configurations for sharing VPC networks across GCP projects. 
-First, we will go over shared VPC which allows you to share a network across several projects in your GCP organization. 
-Then, we will go over VPC Network Peering which allows you to configure private communication across projects in same or different organizations. 
-Shared VPC allows an organization to connect resources from multiple projects to a common VPC network. 
-This allows the resources to communicate with each other securely, and efficiently using internal IPs from that network. 
-For example, in this diagram, there is one network that belongs to the web application servers project. This network is shared with three other projects. Namely, the recommendation service, the personalization service, and the analytics service. Each of those service projects has instances that are in the same network as the web application server, and allow for private communication to that server using the internal IP addresses. 
-The web application server communicates with clients and on-premises, using the server's external IP address. 
-The backend services in contrast can not be reached externally because they only communicate using internal IP addresses. 
-When you use shared VPC, you designate a project as a host project, and attach one or more other service projects to it. 
-In this case, the web application servers project is the host project. 
-The three other projects are the service projects. 
-The overall VPC network is called the shared VPC network. 
-VPC Network Peering in contrast, allows private RFC 1918 connectivity across two VPC networks, regardless of whether they belong to the same project, or the same organization. Now, remember that each VPC network will have firewall rules that define what traffic is allowed or denied between the networks. 
-For example, in this diagram, there are two organizations that represent a consumer and a producer respectively. 
-Each organization has its own organization node. 
-VPC network, virtual machine instances, network admin, and instance admin. 
-In order for VPC Network Peering to be established successfully, the producer network admin needs to peer the producer network with the consumer network. 
-The consumer network admin needs to peer the consumer network with the producer network. 
-When both peering connections are created, the VPC Network Peering session becomes active and routes are exchanged. This allows the virtual machine instances to communicate privately using their internal IP addresses. 
-VPC Network Peering is a decentralized or distributed approach to multiproject networking. 
-Because each VPC network, may remain under the control of separate administrator groups, and maintains its own global firewall, and routing tables. Historically, such projects would consider external IP addresses or VPNs to facilitate private communication between VPC networks. 
-However, VPC Network Peering does not incur the network latency, security, and cost drawbacks that are present when using external IP addresses or VPNs. 
-Now that we've talked about shared VPC, and VPC Network Peering, let me compare both of these configurations to help you decide which is appropriate for a given situation. 
-If you want to configure a private communication between VPC networks in different organizations, you have to use VPC Network Peering. 
-Shared VPC only works within the same organization. Somewhat similarly, if you want to configure private communication between VPC networks in the same project, you have to use VPC Network Peering. This doesn't mean that the networks need to be in the same project, but they can be. 
-Shared VPC, only works across projects. 
-In my opinion, the biggest difference between the two configurations is the network administration models. 
-Shared VPC is a centralized approach to multi-project networking because security and network policy occurs in a single designated VPC network. 
-In contrast, VPC Network Peering is a decentralized approach because each VPC network can remain under the control of separate administrator groups, and maintains its own global firewall, and routing tables. If you want to learn more about shared VPC and VPC Peering, I recommend the networking in Google Cloud Platform course, which you can find in the links section of this video.
 
-Shared VPC:
+First, we will go over shared VPC which allows you to share a network across several projects in your GCP organization.  
+Then, we will go over VPC Network Peering which allows you to configure private communication across projects in same or different organizations.  
+
+**Shared VPC** allows an organization to connect resources from multiple projects to a common VPC network.  
+This allows the resources to communicate with each other securely, and efficiently using internal IPs from that network.  
+For example, in this diagram, there is one network that belongs to the web application servers project. This network is shared with three other projects. Namely, the recommendation service, the personalization service, and the analytics service. Each of those service projects has instances that are in the same network as the web application server, and allow for private communication to that server using the internal IP addresses.  
+The web application server communicates with clients and on-premises, using the server's external IP address.  
+The backend services in contrast can not be reached externally because they only communicate using internal IP addresses.  
+**When you use shared VPC, you designate a project as a host project**, and attach one or more other service projects to it. 
+
+In this case, the web application servers project is the host project.  
+The three other projects are the service projects.  
+The overall VPC network is called the shared VPC network.  
+
+**VPC Network Peering** in contrast, allows **private RFC 1918 connectivity** across two VPC networks, regardless of whether they belong to the same project, or the same organization. Now, remember that each VPC network will have firewall rules that define what traffic is allowed or denied between the networks.  
+For example, in this diagram, there are two organizations that represent a consumer and a producer respectively.  
+Each organization has its own organization node.  
+
+VPC network, virtual machine instances, network admin, and instance admin.  
+In order for VPC Network Peering to be established successfully, the producer network admin needs to peer the producer network with the consumer network.  
+The consumer network admin needs to peer the consumer network with the producer network.  
+When both peering connections are created, the VPC Network Peering session becomes active and routes are exchanged. This allows the virtual machine instances to communicate privately using their internal IP addresses. 
+
+VPC Network Peering is a **decentralized** or **distributed** approach to multiproject networking.  
+Because each VPC network, may remain under the control of separate administrator groups, and maintains its own global firewall, and routing tables. Historically, such projects would consider external IP addresses or VPNs to facilitate private communication between VPC networks.  
+However, VPC Network Peering does not incur the network latency, security, and cost drawbacks that are present when using external IP addresses or VPNs.  
+
+Now that we've talked about shared VPC, and VPC Network Peering, let me compare both of these configurations to help you decide which is appropriate for a given situation.  
+If you want to configure a **private communication between VPC networks in different organizations**, you have to use **VPC Network Peering**.  
+**Shared VPC** only works within the same organization. Somewhat similarly, if you want to configure private communication between VPC networks in the same project, you have to use VPC Network Peering. This doesn't mean that the networks need to be in the same project, but they can be.  
+Shared VPC, only works **across projects**.  
+
+In my opinion, the biggest difference between the two configurations is the network administration models. 
+**Shared VPC is a centralized approach to multi-project networking** because security and network policy occurs in a single designated VPC network.  
+In contrast, **VPC Network Peering is a decentralized approach** because each VPC network can remain under the control of separate administrator groups, and maintains its own global firewall, and routing tables. If you want to learn more about shared VPC and VPC Peering, I recommend the networking in Google Cloud Platform course, which you can find in the links section of this video.
+
+**Shared VPC:**
+
   - across projects in the same organization
   - centralized network administration model (shared VPC admin and security/network admins are, well, shared)
 
-VPC Network Peering:
+**VPC Network Peering:**
+
   - across organizations
   - within one project
   - decentralized network administration model (per-project security/network admins)
+
+
+
+## Load Balancing and Autoscaling
 
 In this module, we focus on load balancing and auto-scaling. 
 Cloud Load Balancing gives you the ability to distribute load balanced computer resources in single or multiple regions to meet your high availability requirements, to put your resources behind a single anycast IP address, and to scale your resources up or down with intelligent autoscaling. 
@@ -150,77 +222,99 @@ Regional LBs:
   - Network TPC/UDP
   - Internal HTTP(S)
 
-A managed instance group is a collection of identical virtual machine instances that you control as a single entity using an instance template. 
+### Managed Instance Groups
+
+**A managed instance group** is a collection of identical virtual machine instances that you control as a single entity using an instance template. 
 You can easily update all the instances in the group by specifying a new template in a rolling update. 
 Also, when your application requires additional compute resources, managed instance groups can automatically scale the number of instances in the group. 
-Managed instance groups can work with load balancing services to distribute network traffic to old instances in the group. If an instance in the groups stops, crashes, or is deleted by an action other than the instance groups command, the managed instance group automatically recreates the instance so it can resume its processing tasks.
-The recreated instance uses the same name and the same instance template as the previous instance. 
+
+Managed instance groups can work with **load balancing services** to distribute network traffic to old instances in the group. If an instance in the groups stops, crashes, or is deleted by an action other than the instance groups command, the managed instance group **automatically recreates the instance** so it can resume its processing tasks.
+The recreated instance uses the **same name and the same instance template** as the previous instance. 
 Managed instance groups can automatically identify and recreate unhealthy instances in a group to ensure that all the instances are running optimally. 
-Regional managed instance groups are generally recommended over zonal managed instance groups because they allow you to spread the application load across multiple zones instead of confining your application to a single zone or you're having to manage multiple instance groups across different zones. 
+
+**Regional** managed instance groups are generally **recommended over zonal** managed instance groups because they allow you to spread the application load **across multiple zones** instead of confining your application to a single zone or you're having to manage multiple instance groups across different zones.  
 This replication protects against zonal failures and unforeseen scenarios where an entire group of instances in a single zone malfunctions. If that happens, your application can continue serving traffic from instances running in another zone of the same region. 
-In order to create a managed instance group, you first need to create an instance template. 
-Next, you are going to create a managed instance group of end specific instances. The instance group manager then automatically populates the instance group based on the instance template. 
-You can easily create instance templates using the GCP console. The instance template dialogue looks and works exactly like creating an instance, except that the choices are recorded so that they can be repeated. When you create an instance group, you define the specific rules for the instance group. 
-First, decide whether the instance group is going to be single or multi zoned and where those locations will be. 
-Second, choose the ports that you are going to allow and load balance across. 
-Third, select the instance template that you want to use. Fourth, decide whether you want to auto-scale and under what circumstances. Finally, consider creating a health check to determine which instances are healthy and should receive traffic. Essentially, you're still creating virtual machines, but you're applying more rules to that instance group.
 
-Let me provide more details on the autoscaling and health checks of the managed instance group. 
-As I mentioned earlier, managed instance groups offer autoscaling capabilities that allow you to automatically add or remove instances from a managed instance group based on increase or decrease in load. 
-Autoscaling helps your applications gracefully handle increase in traffic and reduces cost when the need for resource is lower. 
-You just define the autoscaling policy, and the autoscaler performs automatic scaling based on the measured load. 
+In order to create a managed instance group, you first need to create an instance template.  
+Next, you are going to create a managed instance group of end specific instances. The instance group manager then automatically populates the instance group based on the instance template.  
+You can easily create instance templates using the GCP console. The instance template dialogue looks and works exactly like creating an instance, except that the choices are recorded so that they can be repeated. When you create an instance group, you define the specific rules for the instance group.  
+**First**, decide whether the instance group is going to be **single** or **multi** zoned and where those locations will be.  
+**Second**, choose the **ports** that you are going to allow and load balance across.  
+**Third**, select the instance **template** that you want to use.  
+**Fourth**, decide whether you want to **auto-scale and under what circumstances**. Finally, consider creating a health check to determine which instances are healthy and should receive traffic. Essentially, you're still creating virtual machines, but you're applying more rules to that instance group. 
 
-Applicable autoscaling policies include scaling based on: 
+### Autoscaling and Health Checks
+
+Let me provide more details on the autoscaling and health checks of the managed instance group.  
+As I mentioned earlier, managed instance groups offer autoscaling capabilities that allow you to automatically add or remove instances from a managed instance group based on increase or decrease in load.  
+Autoscaling helps your applications gracefully handle increase in traffic and reduces cost when the need for resource is lower.  
+You just define the autoscaling policy, and the autoscaler performs automatic scaling based on the measured load.  
+
+Applicable autoscaling policies include scaling **based on**: 
   - CPU utilization, 
   - load balancing capacity, 
   - monitoring metrics, 
   - by a queue-based workload like Cloud Pub/Sub. 
-  
-For example, let's assume you have two instances that are at 100 percent and 85 percent CPU utilization as shown on this slide. If your target CPU utilization is 75 percent, the autoscaler will add another instance to spread out the CPU load and stay below the 75 percent target CPU utilization. 
-Similarly, if the overall load is much lower than the target, the autoscaler will remove instances as long as that keeps the overall utilization below the target. 
-Now, you might ask yourself, how do I monitor the utilization of my instance group? When you click on an instance group or even an individual virtual machine, a graph is presented. By default, you will see the CPU utilization over the past hour. 
-But you can't change the timeframe and visualize other metrics like disk and network usage. These graphs are very useful for monitoring your instances, utilization, and for determining how best to configure your autoscaling policy to meet changing demands. 
-If you monitor the utilization of your virtual machine instances and Stackdriver monitoring, you can even set up alerts through several notification channels. For more information on autoscaling, see the links section of this video. 
-Another important configuration for a managed instance group and load balancer is a health check. 
-A health check is very similar to an Uptime check in Stackdriver. You just define a protocol, port, and health criteria as shown in the screenshot. 
-Based on this configuration, GCP computes a health state for each instance. 
-The health criteria defines how often to check whether an instance is healthy. That's the check interval. 
-How long to wait for a response? That's the timeout. 
-How many successful attempts are decisive? That's the healthy threshold. 
-How many failed attempts are decisive? That the unhealthy threshold. 
+
+For example, let's assume you have two instances that are at 100 percent and 85 percent CPU utilization as shown on this slide. If your target CPU utilization is 75 percent, the autoscaler will add another instance to spread out the CPU load and stay below the 75 percent target CPU utilization.  
+Similarly, if the overall load is much lower than the target, the autoscaler will remove instances as long as that keeps the overall utilization below the target.  
+Now, you might ask yourself, how do I monitor the utilization of my instance group? When you click on an instance group or even an individual virtual machine, a graph is presented. By default, you will see the CPU utilization over the past hour.  
+
+But you can't change the timeframe and visualize other metrics like disk and network usage. These graphs are very useful for monitoring your instances, utilization, and for determining how best to configure your autoscaling policy to meet changing demands.  
+If you monitor the utilization of your virtual machine instances with Stackdriver monitoring, you can even **set up alerts through several notification channels**. For more information on autoscaling, see the links section of this video.  
+Another important configuration for a managed instance group and load balancer is a health check.  
+A **health check** is very similar to an Uptime check in Stackdriver. You just define a protocol, port, and health criteria as shown in the screenshot. 
+
+Based on this configuration, GCP computes a health state for each instance.  
+The health criteria defines **how often** to check whether an instance is healthy. That's the check **interval**.  
+How long to wait for a response? That's the **timeout**.  
+How many successful attempts are decisive? That's the healthy threshold.  
+How many failed attempts are decisive? That the **unhealthy threshold**.  
 In the example on this slide, the health check would have to fill twice over a total of 15 seconds before an instance is considered unhealthy.
 
-Now, let's talk about HTTPS Load Balancing which acts at layer seven of the OSI model. 
-This is the application layer which deals with the actual content of each message allowing for routing decisions based on the URL. 
-GCP HTTPS load balancing provides global load balancing for HTTPS requests destined for your instances. This means that your applications are available to your customers at a single any cast IP address, which simplifies your DNS setup. 
-HTTPS load balancing balances HTTP and HTTPS traffic across multiple backend instances and across multiple regions. 
-HTTP requests are load balanced on port 80 or 8080, and HTTPS requests are load balanced on port 443. 
-This load balancers supports both IPv4 and IPv6 clients, is scalable, requires no pre-warming, and enables content-based and cross-regional load balancing. 
-You can configure your own maps that route some URLs to one set of instances and route other URLs to other instances. Requests are generally routed to the instance group that is closest to the user. If the closest instance group does not have sufficient capacity, the request is sent to the next closest instance group that does have the capacity. 
+### HTTP(S) Load Balancing
+
+Now, let's talk about **HTTPS Load Balancing** which acts at layer seven of the OSI model.  
+This is the application layer which deals with the actual content of each message allowing for routing decisions based on the URL.  
+GCP HTTPS load balancing provides global load balancing for HTTPS requests destined for your instances. This means that your applications are available to your customers at a single anycast IP address, which simplifies your DNS setup. 
+
+HTTPS load balancing balances HTTP and HTTPS traffic across multiple backend instances and across **multiple regions**.  
+HTTP requests are load balanced on port **80 or 8080**, and HTTPS requests are load balanced on port **443**.  
+This load balancers supports both IPv4 and IPv6 clients, is scalable, **requires no pre-warming**, and enables content-based and cross-regional load balancing.  
+You can configure your own maps that route some URLs to one set of instances and route other URLs to other instances. Requests are generally routed to the instance group that is **closest** to the user. If the closest instance group does not have sufficient capacity, the request is sent to the next closest instance group that does have the capacity.  
 You will get to explore most of these benefits in the first lab of the module. 
-Let me walk through the complete architecture of an HTTPS load balancer by using this diagram. 
-A Global Forwarding Rule direct incoming requests from the Internet to a target HTTP proxy. 
+
+Let me walk through the complete architecture of an HTTPS load balancer by using this diagram.  
+A **Global Forwarding Rule** direct incoming requests from the Internet to a target HTTP proxy.  
 The target HTTP proxy checks each request against a URL map to determine the appropriate backend service for the request. For example, you can send requests for www.example.com slash audio to one backend service, which contains instances configured to deliver audio files, and the request for www.example.com slash video to another backend service which contains instances configured to deliver video files. 
-The backend service directs each request to an appropriate backend based on solving capacity zone and instance held of its attached backends. 
-The backend services contain a health check, session affinity, a timeout setting, and one or more backends. 
-A health check pulls instances attached to the backend service at configured intervals. Instances that pass the health check are allowed to receive new requests. Unhealthy instances are not sent requests until they are healthy again. 
-Normally, HTTPS load balancing uses a round robin algorithm to distribute requests among available instances. This can be overridden with session affinity. 
-Session affinity attempts to send all requests from the same client to the same Virtual Machine Instance. 
+The backend service directs each request to an appropriate backend based on solving capacity zone and instance held of its attached backends.  
+The backend services contain a health check, session affinity, a timeout setting, and one or more backends.  
+A health check pulls instances attached to the backend service at configured intervals. Instances that pass the health check are allowed to receive new requests. Unhealthy instances are not sent requests until they are healthy again.  
+Normally, HTTPS load balancing uses a round robin algorithm to distribute requests among available instances. This can be overridden with session affinity.  
+
+**Session affinity** attempts to send all requests from the same client to the same Virtual Machine Instance. 
 Backend services also have a timeout setting, which is set to 30 seconds by default. This is the amount of time the backend service will wait on the backend before considering the request a failure. This is a fixed timeout not an idle timeout. If you require longer lived connections, set this value appropriately. 
+
 The backends themselves contain an instance group, a balancing mode, and a capacity scalar. 
-An instance group contains Virtual Machine Instances. The instance group may be a managed instance group with or without autoscaling or an unmanaged instance group. 
-A balancing mode tells the load balancing system how to determine when the backend is at full usage. 
-If older backends for the backend service in a region are at the full usage, new requests are automatically routed to the nearest region that can still handle requests. The balancing mode can be based on CPU utilization or requests per second. 
-A capacity setting is an additional control that interacts with the balancing mode setting. 
+**An instance group** contains Virtual Machine Instances. The instance group may be a managed instance group with or without autoscaling or an unmanaged instance group.  
+**A balancing mode** tells the load balancing system how to determine when the backend is at full usage. 
+If older backends for the backend service in a region are at the full usage, new requests are automatically routed to the nearest region that can still handle requests. The balancing mode can be based on CPU utilization or requests per second.  
+**A capacity setting** is an additional control that interacts with the balancing mode setting.  
+
 For example, if you normally want your instances to operate at a maximum of 80 percent CPU utilization, you would set your balancing mode to 80 percent CPU utilization and your capacity to 100 percent. If you want to cut instance utilization in half, you could leave the balancing mode at 80 percent CPU utilization and set capacity to 50 percent. Now, any changes to your backend services are not instantaneous. So don't be surprised if it takes several minutes for your changes to propagate throughout the network.
 
-An HTTP(S) load balancer has the same basic structure as the HTTP load balancer, but differs in the following ways. 
-An HTTP(s) load balancer uses a target HTTPS proxy instead of a target HTTP proxy. 
-An HTTPS load balancer requires at least one signed SSL certificate installed on the target HTTPS proxy for the load balancer. The client SSL session terminates at the load balancer. 
-HTTPS load balancer support the QUIC transport layer protocol. QUIC is a transport layer protocol that allows faster client connection initiation, eliminates head of line blocking in multiplexed streams, and supports connection migration when a client's IP address changes. For more information on the quick protocols, see the links section of this video.
-To use HTTPS, you must create at least one SSL certificate that can be used by the target proxy for the load balancer. 
-You can configure the target proxy with up to 10 SSL certificates. For each SSL certificate, you first create an SSL certificate resource which contains the SSL certificate information. 
-SSL certificate resources are used only with load balancing proxies such as target HTTPS proxy or target SSL proxy, which we will discuss later in this module.
+### HTTPS Load Balancer
+
+An HTTP(S) load balancer has the same basic structure as the HTTP load balancer, but differs in the following ways.  
+An HTTP(s) load balancer uses a target **HTTPS proxy** instead of a target HTTP proxy.  
+An HTTPS load balancer requires **at least one signed SSL certificate** installed on the target HTTPS proxy for the load balancer. The client SSL session terminates at the load balancer.  
+HTTPS load balancer support the **QUIC** transport layer protocol. QUIC is a transport layer protocol that allows faster client connection initiation, eliminates head of line blocking in multiplexed streams, and supports connection migration when a client's IP address changes. For more information on the quick protocols, see the links section of this video.
+
+To use HTTPS, you must create at least one SSL certificate that can be used by the target proxy for the load balancer.  
+You can configure the target proxy with **up to 10 SSL certificates**. For each SSL certificate, you first create an SSL certificate resource which contains the SSL certificate information.  
+SSL certificate resources are used only with load balancing proxies such as target HTTPS proxy or target SSL proxy, which we will discuss later in this module. 
+
+### Lab Review: Configuring an HTTP Load Balancer with Autoscaling
 
 In this lab, you configured an HTTP Load Balancer with backends in US Central one and Europe west one. Then you stress tested the load balancer with a VM to demonstrate global load balancing and auto-scaling. You can stay for a lab walkthrough, but remember that GCP's user interface can change, so your environment might look slightly different. So here we are in the GCP console and the first thing I'm going to do is configure the HTTP and health check firewall rules. So let me go ahead and do that by navigating to VPC network, and specifically, firewall rules. So you will notice that there are already some firewall rules here for ICMP, internal RDP and SSH traffic. These are the ones that always come with the default network. We're now going to create a firewall rule to allow HTTP. So let me create firewall rule. I'm going to provide it a name. It's going to be for the default network. I'm going to specify the target tags by using HTTP server, and we'll have to define that target tag on our instances later. The source, I'm going to set to IP ranges and just set from anywhere. Then I can specify the TCP port to 80. That's for HTTP. Then we can click "Create". Then we're going to create a similar firewall rule for our health checkers. So I can do that while this rule is being created. Again, on the same network, I'm going to use the same target tags. So it just applies to instances that have that tag. Now, for the IP ranges, I'm going to be a lot more specific. These are provided in the lab instructions for you, but these are the IP ranges of the health checker. Now, when you enter those, make sure you enter one first. You can click "Space" and you can see that it has acknowledged that. Then you can copy and paste the other IP range, and then click on it, and you can see that it's grabbed that as well. Now, for the protocol and ports, in this case, we're just going to specify all of TCP, but you could narrow that down a little bit depending on what kind of health check you're doing. So let me click "Create" on that. While these are being created, I can now create my custom image. So I'm going to go to Compute Engine. We're going to create a VM. We're going to call that a web server. I'm going to go ahead and do that. I can leave the region as US Central 1, zone, US Central 1-a. I'm going to now expand this option down here, management, security, disks, networking, and sole tenancy. A couple of things I want to do first under disks. I want to make sure that this disk is not deleted when the instance is deleted. That works because these are just persistent disk, they are just network attached. On the networking, I'm going to define the network tag, http-server, and this is going to be for our default network. So that way, the firewalls that we just created are going to be applied to this instance. So let me go ahead and click "Create." Once this instance is up and running, we're going to customize it by installing some software. So I'm going to just wait for the instance to be created. There it is. I can click on SSH. I'm going to just run the commands that are in the lab instructions. So first, I'm just going to install Apache tube, and then I'm going to start the Apache server after that. We're going to double-check that server by navigating to the external IP address that we have here, and that is why we attached that firewall rule for the external IP. We don't really need the firewall rule for the health checker yet, that is going to be later for our backend instances and we haven't really configured that health check yet, anyway. So here we are, it's still connecting, so let's just give it a couple of seconds. There we are. I'm going to paste those two commands in there.
 Let that run.
@@ -234,131 +328,182 @@ Then I'm just going to go create that, and once that is up, I'm going to take th
 and let's store the IP address. Now, I need to grab that. So let me go back here. We're going to use the IPv4 address,
 and let me get my stress test backup, and store that. That's also verify, make sure this is stored, and here we can see it returning, and it matches that IP address. That's great. Let's run a command to place a load on our load balancer. Okay. So this uses Apache Bench, and it's not going to benchmark this, and this is now going to run in the background. So now what I can do is I can go back to my load balancer, which I'm looking at right now. If I'm looking at this way, I can actually directly look at the backend, and click on HTTP backend, and we don't really have any traffic yet. This takes take a little while to update here. We can see the two backends we have. We can see that one is scaling on rate, one is scaling on CPU utilization. Once we have a lot of traffic, it will start showing here where that traffic is coming from, and which instance it is going to. So what we want to do is just hang on here, and refresh this page for a couple minutes, until we can actually see some traffic being generated. So let me just go back and go back in here, and no traffic yet. So lets just wait a minute or two, and see what we can visualize here. All right. So this only took a couple of seconds. So here we are. We can see that there's a lot of traffic coming from North America, that's for my stress tests, and we can see it's going both to US Central1 which is the closest, and that's where most of our traffic is going, most of requests. But we also have some traffic that is actually spilling over to our Europe West1 instance. So we can see that we have global load balancing here. What we could do now is also we can monitor the backends to see if they're actually scaling. So if I go to Compute Engine and refresh, well, we can already see that we have a bunch more backends now that are trying to handle all of the sudden increase in traffic, and I really I'm stress testing this quite a lot. If I go to instance groups, we can get more information here. It's saying that it's already having issue with the amount of instances I've selected, the maximum that is five. If we go in here into the Europe West1, we can get more details and monitoring. So it's showing us how it scaled up, how it's managing the load that's being placed on it. We could also look in US Central1, and see that we now have up to five instances already across different zones, and I can also go into the monitoring here and get more information, and see that when we scaled up, and to refresh this a little bit, we'll see more instances in here, and I'll talk more about the capacity it has. I can come back here, and now we can see that we have, because I really provided very minimal traffic to your Central1, just 50 requests per second, but I'm making almost 281 here. So now we have a lot of the traffic spilling over. So this is a really good view to come back to, to always monitor your load balancer. Mutually, you can also use Stackdriver logging and monitoring, you set up alerts, you set up roles. So maybe you need to increase that maximum limit of five now. That's really a cost limit. You set that so that you don't exceed your cost too much. But if you're saying, "Oh my God, I need to work on this traffic." You could have more instances. Maybe you're getting an attack actually, at that point you could use a product called Cloud AMR, to maybe allow and deny certain IP addresses. But this is really all we want it to achieve for the lab.
 
-Let's talk about SSL proxy and TCP proxy load balancing. 
-SSL proxy is a global load balancing service for encrypted, non-HTTP traffic. This load balancer terminates user SSL connections at the load balancing layer, then balances the connections across your instances using the SSL or TCP protocols. 
+### SSL Proxy Load Balancing
+
+Let's talk about SSL proxy and TCP proxy load balancing.  
+**SSL proxy** is a global load balancing service for encrypted, non-HTTP traffic. This load balancer terminates user SSL connections at the load balancing layer, then balances the connections across your instances using the SSL or TCP protocols. 
 These instances can be in multiple regions, and the load balancer automatically directs traffic to the closest region that has capacity. 
+
 SSL proxy load balancing supports both IPv4 and IPv6 addresses for client traffic and provides: 
+
   - intelligent routing, 
   - certificate management, 
   - security patching, 
   - SSL policies. 
 
-Intelligent routing means that this load balancer can route requests to backend locations where there is capacity. 
-From a certificate management perspective, you only need to update your customer-facing certificate in one place when you need to switch those certificates. 
-Also, you can reduce the management overhead for your virtual machine instances by using self-signed certificates on your instances. In addition, if vulnerabilities arise in the SSL or TCP stack, GCP will apply patches at the load balancer automatically in order to keep your instances safe. For the full list of ports supported by SSL proxy load balancing and other benefits, please refer to the link section of this video. This network diagram illustrates SSL proxy load balancing. 
-In this example, traffic from users in Iowa and Boston is terminated at the global load balancing layer. From there, a separate connection established to the closest backend instance. 
-In other words, the user in Boston would reach the US East region, and the user in Iowa would reach the US Central region, if there's enough capacity. Now, the traffic between the proxy and the backend can use SSL or TCP. I recommend using SSL.
+**Intelligent routing** means that this load balancer can route requests to backend locations where there is capacity.  
+From a certificate management perspective, you only need to **update your customer-facing certificate** in one place when you need to switch those certificates.  
+Also, you can reduce the management overhead for your virtual machine instances by using **self-signed certificates on your instances**. In addition, if vulnerabilities arise in the SSL or TCP stack, GCP will apply patches at the load balancer automatically in order to keep your instances safe. For the full list of ports supported by SSL proxy load balancing and other benefits, please refer to the link section of this video. This network diagram illustrates SSL proxy load balancing.  
+In this example, traffic from users in Iowa and Boston is terminated at the global load balancing layer. From there, a separate connection established to the closest backend instance.  
+In other words, the user in Boston would reach the US East region, and the user in Iowa would reach the US Central region, if there's enough capacity. Now, the traffic between the proxy and the backend can use SSL or TCP. I recommend using SSL.  
 
-TCP proxy is a global load balancing service for unencrypted non-HTTP traffic. 
-This load balancer terminates your customers TCP sessions at the load balancing layer, then forwards the traffic to your virtual machine instances using TCP or SSL. These instances can be in multiple regions and the load balancer automatically directs traffic to the closest region that has capacity. 
+### TCP Proxy Load Balancing
+
+TCP proxy is a **global** load balancing service for unencrypted non-HTTP traffic.  
+This load balancer **terminates** your customers TCP sessions at the load balancing layer, then forwards the traffic to your virtual machine instances using TCP or SSL. These instances can be in multiple regions and the load balancer automatically directs traffic to the **closest region that has capacity**.  
 TCP proxy load balancing supports both IPv4 and IPv6 addresses for Client Traffic. 
 Similar to SSL proxy load balancer, the TCP proxy load balancer provides: 
-  - intelligent routing 
-  - security patching. 
-For the fullest reports supported by TCP proxy load balancing and other benefits, please refer to the links section of this video. This network diagram illustrates TCP proxy load balancing.
-In this example, traffic from users in Iowa and Boston is terminated at the Global Load Balancing layer.
-From there, a separate connection is established to the closest backend instance. 
-As in the SSL proxy load balancing example, the users in Boston would reach the US East region and the user in Iowa which reach the US central region, if there's enough capacity. Now the traffic between the proxy and the backends can use SSL or TCP and I also recommend using SSL here.
 
-Next let's talk about network load balancing which is a regional load balancing service. Network load balancing is a regional non proxied load balancing service. 
-In other words, all traffic is passed through the load balancer instead of being proxied and traffic can only be balanced between virtual machine instances that are in the same region unlike a global load balancer. 
+- Intelligent routing 
+- Security patching. 
+
+For the fullest reports supported by TCP proxy load balancing and other benefits, please refer to the links section of this video. This network diagram illustrates TCP proxy load balancing.  
+In this example, traffic from users in Iowa and Boston is terminated at the Global Load Balancing layer.
+From there, a separate connection is established to the closest backend instance.  
+As in the SSL proxy load balancing example, the users in Boston would reach the US East region and the user in Iowa which reach the US central region, if there's enough capacity. Now the traffic between the proxy and the backends can use SSL or TCP and I also recommend using SSL here.  
+
+### Network Load Balancing
+
+Next let's talk about network load balancing which is a **regional** load balancing service. Network load balancing is a **regional non-proxied** load balancing service. 
+In other words, all traffic is passed through the load balancer instead of being proxied and traffic can only be balanced between virtual machine instances **that are in the same region** unlike a global load balancer. 
 This load balancing service uses forwarding rules to balance the load on your systems based on incoming IP protocol data such as address, port, and protocol type. 
+
 You can use it to load balance UDP traffic and to load balance TCP/SSL traffic on ports that are not supported by the TCP proxy and SSL proxy load balancers. 
-The back ends of a network load balancer can be a template-based instance group or target pooled resource. 
-But what is the target pool resource? 
-A target pool resource defines a group of instances that receive incoming traffic from forwarding rules. When a forwarding rule direct traffic to a target pool, the load balancer picks an instance from these target pools based on hash of the source IP and port, and the destination IP and port. 
-These target pools can only be used with forwarding rules that handled TCP and UDP traffic. 
+The back ends of a network load balancer can be a **template-based instance group** or **target pooled resource**.  
+But what is the target pool resource?  
+**A target pool resource** defines a group of instances that receive incoming traffic from forwarding rules. When a forwarding rule direct traffic to a target pool, the load balancer picks an instance from these target pools based on hash of the source IP and port, and the destination IP and port.  
+These target pools can only be used with forwarding rules that handled TCP and UDP traffic.  
 Now each project can have up to 50 target pools and each target pool can have only one health check. Also, all the instances of a target pool must be in the same region which is the same limitation as for the network load balancer.
 
-Next, let's talk about internal load balancing. 
-Internal load balancing is a regional, private load balancing service for TCP and UDP based traffic. In other words, this load balancer enables you to run and scale your services behind a private load balancing IP address. 
-This means that it is only accessible through the internal IP address of virtual machine instances that are in the same region. Therefore, use internal load balancing to configure an internal load balancing IP address, to act as the front end to your private backend instances. 
-Because you don't need a public IP address for your load balanced service, your internal client requests to stay internal to your VPC network and the region. This often results in lower latency, because all your load balanced traffic will stay within Google's network, making your configuration much simpler. 
-Let's talk more about the benefit of using a software-defined internal load balancing service. 
-GCP internal load balancing is not based on a device or a virtual machine instance. 
-Instead, it is a software-defined, fully distributed load balancing solution. In the traditional proxy model of internal load balancing as shown on the left, you configure an internal IP address on a load balancing device or instances, and your client instance connects to this IP address. Traffic coming to the IP address is terminated at the load balancer, and the load balancer selects a backend to establish a new connection to. Essentially, there are two connections. One between the client and the load balancer, and the one between the load balancer and the backend. 
-GCP internal load balancing distributes client instance requests to the backend using a different approach, as shown on the right. 
-It uses lightweight load balancing built on top of Andromeda, Google's network virtualization stack, to provide software-defined load balancing that directly delivers the traffic from the client instance to a backend instance. To learn more about Andromeda, I recommend the blog that is in the links section of this video. 
-Now, internal load balancing enables you to support use-cases such as the traditional three-tier or web service. In this example, the web tier uses an external HTTPS load balancer, that provides a single global IP address for users in San Francisco, Iowa and Singapore, and so on. The backends of this load balancer are located in the US-Central1 and Asia-East-1 region, because this is a global load balancer. These backends then access an internal load balancer in each region as the application or internal tier. The backends of this internal tier are located in US-Central1-A, US-Central1-B, and Asia-East1-B. The last tier is the database tier in each of these zones. The benefit of this three-tier approach is that neither the database tier nor the application tier is exposed externally. The simplified security and network pricing.
+### Internal Load Balancing
+
+Next, let's talk about internal load balancing.  
+**Internal load balancing** is a **regional**, **private** load balancing service for TCP and UDP based traffic. In other words, this load balancer enables you to run and scale your services **behind a private load balancing IP address.**  
+This means that it is only accessible through the internal IP address of virtual machine instances that are in the same region. Therefore, use internal load balancing to configure an internal load balancing IP address, to act as the **front end to your private backend instances**. 
+
+Because you don't need a public IP address for your load balanced service, your internal client requests to **stay internal to your VPC network and the region**. This often results in lower latency, because all your load balanced traffic will stay within Google's network, making your configuration much simpler.  
+Let's talk more about the benefit of using a software-defined internal load balancing service.  
+GCP internal load balancing is **not based on a device or a virtual machine instance**.  
+
+Instead, it is a software-defined, **fully distributed load balancing solution**. In the traditional proxy model of internal load balancing as shown on the left, you configure an internal IP address on a load balancing device or instances, and your client instance connects to this IP address. Traffic coming to the IP address is terminated at the load balancer, and the load balancer selects a backend to establish a new connection to. Essentially, there are two connections. One between the client and the load balancer, and the one between the load balancer and the backend.  
+GCP internal load balancing distributes client instance requests to the backend using a different approach, as shown on the right.  
+It uses **lightweight load balancing built on top of Andromeda, Google's network virtualization stack**, to provide software-defined load balancing that directly delivers the traffic from the client instance to a backend instance. To learn more about Andromeda, I recommend the blog that is in the links section of this video. 
+
+Now, internal load balancing enables you to support use-cases such as the traditional **three-tier or web service**. In this example, the web tier uses an external HTTPS load balancer, that provides a single global IP address for users in San Francisco, Iowa and Singapore, and so on. The backends of this load balancer are located in the US-Central1 and Asia-East-1 region, because this is a global load balancer. These backends then access an internal load balancer in each region as the application or internal tier. The backends of this internal tier are located in US-Central1-A, US-Central1-B, and Asia-East1-B. The last tier is the database tier in each of these zones. The benefit of this three-tier approach is that neither the database tier nor the application tier is exposed externally. The simplified security and network pricing.
+
+### Lab Review: Configuring an Internal Load Balancer
 
 In this lab, you created two managed instance groups in the US Central one region along with firewall rules to allow HTTP traffic to those instances and TCP traffic from the GCP health checker. Then you configured and tested an Internal Load Balancer for those instance groups. You can stay for a lab walkthrough, but remember that GCPs user interface can change. So your environment might look slightly different. So here I'm in the GCP Console, and in this labs similar to other labs we've actually pre-created some resources for you. You can explore those, again if you go to navigation menu and then go to Deployment Manager, you'll see a deployment here. We created a network with two subnets and some firewall rules. We can also just explore those by navigating to VPC network. That's what the lab instructions actually mentioned. So I click there, already have the default network, and here's that extra network I have created with the two subnets, and I also have some firewall rules for those right here to allow ICMP and SSH and RDP. All right, so what we're going to do now is we're going to create some more firewall rules. We're going to create one for HTTP and then we're also going to create some for the health check. So let me just click "create firewall rule" and this is going to be fairly similar to what we already did for the HTTP load balancer lab, the big difference is we now have our own network that we're going to apply this to. We're also going to have target tags, load balancer backend, IP ranges, we want HTTP from anywhere, and HTTP would be TCP 80. So we can click "Create" and then we're just going to repeat the same thing for the health checker. So let me copy the name of the firewall rule apply it to the right network of the load balancer backend as the target tag. Now the IP ranges, we're going to copy them one by one in here. So let me paste one, its base and let me grab the other one, paste that as well. For now, I'm just going to do all ports under TCP, but you could be a little bit more specific depending on what you want your health checker to look for. So let's click "Create" and now we're going to configure our instance templates and instance groups. So let me navigate to Compute Engine and then Instance Templates. We're going to create a template in there and just call the instance template one. Let me click "Create". That's actually the name that's already in there, then I can expand management security, it is networking. Now a couple of things, first of all in the HTTP load balancer we had a custom image. In this case, we're actually going to set up a startup script. So under the metadata, I'm going to provide as a key the startup script URL, and in a Cloud Storage Bucket that's publicly accessible, we've placed a startup file. You could go in there and you could actually review that and the link to that is in the lab. Then I'm going to go to networking. I've created all these firewall rules. They apply to specific network tags and they're also for a specific network. So let me make sure I have the right network selected, and select the network tag, and this is going to be for subnet a. So now I can click "Create", and then we're going to create a another instance template for subnet b. So let me just wait for this to be created and then I'm just going to create another one from there by selecting it and clicking "copy". It's going to change the name automatically and the main difference is I now need to make sure I select the different subnet. This is going to be for subnet b and then I click "create" as well. So once we have these up we can now create the managed instance groups. So let me navigate to instance groups and startup by creating our first one and just call it instance group one. This is going to be a single zone. It's going to be US central1 a. We're going to use instance template one and we're going to select this be based and CPU usage. Let's set 80 as the usage, minimum of one maximum of five, and I could change the cool down period for example to 45 seconds, and now I can click "create". I could also attach a health check here or just attach that later to the load balancer, certainly click "create" and we're going to repeat the same for the instance group two, and this is going to be now another one, it's going to be based on the other instance template, also in US central1. Let's do that in b. For example, change the target CPU usage to match what we had earlier of 80, maximum of five, cool down to 45, and then we can go ahead and create that as well.
 So if I click on VM instances now I should already have an instance from the first instance group, and if I come back here, I had to refresh to see that other one. We can see that the other instance is now being created for the instance group two. So we can verify again that they're being created here. So here we see we have now one instance group each. So now what we can do is we're going to create a utility VM to navigate to these instances. So we can see also by the way if we look at the internal IP addresses that they're both part of a different site arrange, and if I click on nic zero here we can see which network interface this is part of. You can see it's part of subnet a, that's correct. If I click on the other one, you can see this part of subnet b. So each subnet now has an instance group in it. So let me create another instance. This is going to be our utility VM.
 Now an internal load balancer is regional, so I want to use the same region. We could use a different zone, let's say US central 1F. I need a very small machine only for this and I want to make sure this is in the right network, so let me expand this option down here, networking and make sure that this is in my right network. I have the choice of the two different subnets in there, let's see if it's subnet a. If I want to match this to the network diagram that we have, I can specify the actual internal IP. So instead of Ephemeral Automatic I can choose Ephemeral Custom, and then just type in that IP address. Again this is just to match that network diagram that we have. I can click "done" on that and then I can go ahead and create that.
 Now the lab instructions say makes sure that the IP addresses that you have match the lab instructions. This is because these are the first available IP addresses. Again, the first and second is reserved as well as the last and second to last, so that's why we start with a dot two here and here we've a dot 50 because we define that. So now I can go SSH to the utility VM and all the curl commands are based on these two IPs. So viewers are different. You maybe want to see if you have some other instances that you need to delete first. I'm going to curl first to this first IP here. So let me just copy that directly from the lab instructions. What's displayed here is just the page that we set up for these instances. This comes directly from the startup script, and it's just telling me the IP address where I'm coming from. Well, I'm coming from this into the utility VM, it has the name, that's telling me that it's coming to this instance, and it tells me the region and zone and I can repeat the same for the other instance and it's not telling me again from the same address, but different instance and a different zone. This is going to be really useful for when we have the internal load balancer setup. We call the load-balanced IP itself, we should be able to see that if we call several times that were kind of hopping between the different backends that we have established. So we can actually exit out of here for now, and what we're going to do now is configure the internal load balancer. So to do that, I'm going to go to the navigation menu, go to network services, load balancing. We're going to create a load balancer. This is going to be a TCP load balancing, so let me start that. It's going to be only between VMs, this is an internal load balancer. When I do that it restricts me to be regional. We covered that in the slides that the internal load balancer is regional, so I'm going to click "Continue" and then I'll give it a name. Let's just call it my internal load balancer, we are going to configure the backend. Specifically, this is in a specific region which gives you a central1. The network is my internal app and then the instance group, we're going to pick first instance group one, click "done" and then add another backend which is going to be instance group two and click "done" for that. Now we didn't create a health check earlier, we can do that here now. So let me just go create a health check, just call it my internal ib health check TCP 80. That's great, and here we again have the criteria health, it's going to check what the interval is, the timeout, and how it's going to define if the back-end is healthy or unhealthy. So let's save and continue that. We can see that we have a blue checkmark. This is all set up. So now I can click on the front end configuration, the subnetwork. Let's for example put this in subnet b. For internal IP, we could actually preserve a static internal IP address. Let's give that a name, which is called my internal advanced IP, and rather than assigning automatically, we could choose our own because it's just an internal IP and we could match this again to the network diagram. So it's going to be 10.10.30.5, let's reserve that, and then we're going to finish the configuration for the load balancer by setting the port here to 80, and I'm going to click "done" and now we can review and finalize this, we have our two backends. We see the autoscaling on that, we see the zones and we have the front-end itself. So we have the exact IP address, the way we can then access this internal load balancer. So let me click "Create" and then let's wait for the load balancer to be created before we move on to the next step. So here we are, actually I click "refresh" and we can see that the load balancer is all set up. Now we specified the IP address so I don't have to grab it from here. Instead, I'm going to go back to my Compute Engine instances and use the utility VM to navigate to our load balancer IP. So I'm just going to curl that and since I have that startup script on the backend, that defines which instance I'm looking at. This is now going to give me some more information. So I'm going to curl the IP address and the first time I did it, you can see it targeted instance group two. Let's run that one more time, instance group two again, script two again. That's maybe run the command a couple more times and let's see if we can get a couple of different backends. So here run it a couple times, you can see that 2, 2, 2, 2, then it's got 1, 2, 2, 2, 1. So we can certainly see that it is load balancing between the different backends that we have, and that's the end of the lab.
 
-Now, that we have discussed all the different load balancing services within GCP, let me help you determine which load balancer best meets your need. 
-One differentiator between the different GCP load balancers is the support for IPv6 clients. 
+### Choosing a load balancer
+
+Now, that we have discussed all the different load balancing services within GCP, let me help you determine which load balancer best meets your need.  
+One differentiator between the different GCP load balancers is the support for IPv6 clients.  
 Only the: 
-  - HTTPS, 
-  - SSL proxy, 
-  - TCP proxy 
-load balancing services support IPV6 clients. 
+
+- HTTPS, 
+- SSL proxy, 
+- TCP proxy 
+
+load balancing services **support IPV6 clients**.  
+
 IPv6 termination for these load balancers enables you to handle IPv6 requests from your users and proxy them over IPv4 to your backend. For example, in this diagram, there is a website, www.example.com, that is translated by Cloud DNS to both an IPv4 and IPv6 address. This allows a desktop user in New York and a mobile user in Iowa to access the load balancer through the IPv4 and IPv6 addresses respectively. 
-But how does the traffic get to the backends and their IPv4 addresses? 
-Well, the load balancer acts as a reverse proxy, terminates the IPv6 client connection and places the request into an IPv4 connection to a backend.
-On the reverse path, the load balancer receives the IPv4 response from the backend and places it into the IPv6 connection back to the original client. In other words, configuring IPv6 termination for your load balancers, lets your backend instances appear as IPv6 applications to your IPv6 clients. 
-Now, in order to decide which load balancer best suits your implementation of GCP, consider the following aspects of Cloud load balancing. 
-Global versus regional load balancing, external versus internal load balancing, and the traffic type. 
-If you need an external load balancing service, start on the top left of this flowchart. First, choose the type of traffic that your load balancer must handle. 
-If that is HTTP or HTTPS traffic, I recommend using the HTTPS load balancing service as a layer seven load balancer. 
-Otherwise, use the TCP and UDP traffic paths of this flowchart to determine whether the SSL proxy, TCP proxy, or network load balancing service meets your needs. 
-If you need an internal load balancing service, you have the internal load balancing service available and it supports both TCP and UDP traffic. As I mentioned at the beginning of this module, there's actually another internal load balancer for HTTPS traffic but it's in beta as of this recording. 
-The sixth load balancer is for HTTP or HTTPS traffic and it's regional meaning for IPv4 clients. 
-If you prefer a table over a flowchart, I recommend this summary table. This table helps you identify the right load balancer based on the traffic type, the distribution of your backend global or regional, and the type of IP addresses of your backend external or internal. This table also lists the available ports for load balancing and highlights that only the Global Load Balancers support both IPv4 and IPV6 clients.
+But how does the traffic get to the backends and their IPv4 addresses?  
+Well, the load balancer acts as a **reverse proxy**, terminates the IPv6 client connection and places the request into an IPv4 connection to a backend.
 
-HTTP(S):
-  - only for HTTP(S) traffic
-  - Global
-  - IPv4 and v6
-  - External
-  - 80, 8080, 443
-SSL Proxy:
-  - for TCP with SSL offload traffic
-  - Global
-  - IPv4 and v6
-  - External
-  - well-known ports
-TCP Proxy:
-  - for TCP without SSL offload traffic
-  - Global
-  - IPv4 and v6
-  - External
-  - well-known ports
-Network TCP/UDP:
-  - for TCP/UDP without SSL offload traffic
-  - Regional
-  - IPv4 only
-  - External
-  - any ports
-Internal TCP/UDP:
-  - for TCP/UDP
-  - IPv4 only
-  - Internal`
-  - any ports
-Internal HTTP(S):
-  - only for HTTP(S) traffic
-  - IPv4 only
-  - Internal
-  - 80, 8080, 443
+On the reverse path, the load balancer receives the IPv4 response from the backend and places it into the IPv6 connection back to the original client. In other words, configuring IPv6 termination for your load balancers, lets your backend instances appear as IPv6 applications to your IPv6 clients.  
+Now, in order to decide which load balancer best suits your implementation of GCP, consider the following aspects of Cloud load balancing.  
+**Global** versus **regional** load balancing, **external** versus **internal** load balancing, and the **traffic type**. 
 
+If you need an **external load balancing service**, start on the top left of this flowchart. First, choose the type of traffic that your load balancer must handle.  
+If that is **HTTP** or **HTTPS** traffic, I recommend using the HTTPS load balancing service as a layer seven load balancer.  
+Otherwise, use the **TCP** and **UDP** traffic paths of this flowchart to determine whether the SSL proxy, TCP proxy, or network load balancing service meets your needs.  
 
-Now that we've covered several of the GCP services and features, it makes sense to talk about how to automate the deployment of GCP infrastructure. 
-Calling the Cloud APIs from code is a powerful way to generate infrastructure. 
-But writing code to create infrastructure also has some challenges. One issue is that the maintainability of the infrastructure depends directly on the quality of the software. 
-For example, a program could have a dozen locations that call the Cloud APIs to create VMs. Fixing a problem with the definition of one VM would require first identifying which of the dozen calls actually created it. 
-Standards software development best practices will apply and it's important to note that things could change rapidly requiring maintenance on your code. 
-Clearly, another level of organization is needed. That's the purpose of deployment manager. 
-Deployment manager uses a system of highly structured templates and configuration files to document the infrastructure in an easily readable and understandable format. 
-Deployment manager conceals the actual Cloud API calls. So you don't need to write code and can focus on the definition of the infrastructure. 
-In this module, we cover how to use deployment manager to automate the deployment of infrastructure, and how to use GCP marketplace to launch infrastructure solutions. 
-You will use Deployment Manager or Terraform to deploy a VPC network, a firewall rule, and virtual machine instances in the lab of this module. I will also demonstrate how to launch infrastructure solutions using GCP marketplace. Let's start by talking about deployment manager.
+If you need an **internal load balancing service**, you have the internal load balancing service available and it supports both TCP and UDP traffic. As I mentioned at the beginning of this module, there's actually another internal load balancer for HTTPS traffic but it's in beta as of this recording.  
+The sixth load balancer is for HTTP or HTTPS traffic and it's regional meaning for IPv4 clients.  
+If you prefer a table over a flowchart, I recommend this summary table. This table helps you identify the right load balancer based on the traffic type, the distribution of your backend global or regional, and the type of IP addresses of your backend external or internal. This table also lists the available ports for load balancing and highlights that only the Global Load Balancers support both IPv4 and IPV6 clients.  
 
-So far, you've been creating GCP resources using the GCP console and Cloud Shell. I recommend the GCP console when you are new to using a service or if you prefer a UI. Cloud Shell works best when you are comfortable using a specific service and you want to quickly create resources using the command line. Deployment Manager takes this one step further. Deployment Manager is an infrastructure deployment service that automates the creation and management of GCP resources for you. You just specify all the resources needed for your application in a declarative format and deploy your configuration. This deployment can be repeated over and over with consistent results, and you can delete a whole deployment with one command or click. The benefit of a declarative approach is that it allows you to specify what the configuration should be and let the system figure out the steps to take Instead of deploying each resource separately. You specify the set of resources which compose the application or service allowing you to focus on the application.
-Unlike Cloud Shell Deployment Manager will deploy resources in parallel. You can even abstract parts of your configuration into individual building blocks or templates that can be used for other configurations.
-Deployment Manager uses the underlying API's of each GCP service to deploy your resources. This enables you to deploy almost everything we have seen so far from instances, instance templates and groups. To VPC networks, firewall rules, VPN tunnels, cloud routers, and load balancers. For a full list of supported resource types see the link sections of this video. Before you get into the lab, let me walk you though a quick example that shows how Deployment Manager can be used. To set up an auto mode network with an HTTP firewall rule. I could put this whole deployment into one single configuration. However, it's useful to parameterize your configuration with templates. Specifically, we are going to create one template for the auto mode network and one for the firewall rule. Therefore, if we want to create either of these resources somewhere else later on, we can use those templates. Let's start with the auto mode network template which we can write in Jinja too or Python. Now each resource must contain a name type and properties for the name. I'm using an environment variable to get the name from the top level configuration. Which makes this template more flexible for the type I'm defining the API for a VPC network, which is computed that we want.network. You can find all supported types in the documentation or query them within Cloud Shell as you will explore in the upcoming lab.
-By definition, an auto mode network automatically creates a subnetwork in each region. Therefore, I am setting the auto create subnetworks property to true. Next, let's write the template for the HTTP firewall rule. For the name, I'm again using an environment variable to get the name from the top level configuration. For the type, I'm defining the API for a firewall rule, which is computed v1 firewall. The properties section contains the network. I want to apply this firewall rule to the source IP ranges and the protocols and ports that are allowed except for the source IP ranges. I'm defining these properties as template properties. I will provide the exact properties from the top level configuration, which makes this firewall rule extremely flexible. Essentially I can use this firewall rule template for any network and any protocol report combination. Next let's write the top level configuration in yaml's index. I start by importing the templates that I want to use in this configuration, which are autonetwork.jinja and firewall.jinja. Then I define the auto mode network by giving it the name mynetwork and leveraging the autonetwork.Jinja template. I could create more auto mode networks in this configuration with other names or simply reuse this template in other configurations later on. Now I define the firewall rule by giving it a name, leveraging the firewall.jinja template, referencing my network and defining the IP protocol and port. I can easily add Add other ports such as 4434, https or 22 for SSH traffic. Using the self link reference for the network name ensures that the VPC network is created before the firewall rule. This is very important because Deployment Manager creates all the resources in parallel. Unless you use references, you would get an error without the reference because you cannot create a firewall rule for a non existing network. Now there are other infrastructure automation tools in addition to Deployment Manager that you can use in GCP.
+**HTTP(S):**
+
+- only for HTTP(S) traffic
+- Global
+- IPv4 and v6
+- External
+- 80, 8080, 443
+
+**SSL Proxy:**
+
+- for TCP with SSL offload traffic
+- Global
+- IPv4 and v6
+- External
+- well-known ports
+
+**TCP Proxy:**
+
+- for TCP without SSL offload traffic
+- Global
+- IPv4 and v6
+- External
+- well-known ports
+
+**Network TCP/UDP:**
+
+- for TCP/UDP without SSL offload traffic
+- Regional
+- IPv4 only
+- External
+- any ports
+
+**Internal TCP/UDP:**
+
+- for TCP/UDP
+- IPv4 only
+- Internal
+- any ports
+
+**Internal HTTP(S):**
+
+- only for HTTP(S) traffic
+- IPv4 only
+- Internal
+- 80, 8080, 443
+
+## Infrastructure Automation
+
+Now that we've covered several of the GCP services and features, it makes sense to talk about how to automate the deployment of GCP infrastructure.  
+Calling the Cloud APIs from code is a powerful way to generate infrastructure.  
+But writing code to create infrastructure also has some challenges. One issue is that the maintainability of the infrastructure depends directly on the quality of the software.  
+For example, a program could have a dozen locations that call the Cloud APIs to create VMs. Fixing a problem with the definition of one VM would require first identifying which of the dozen calls actually created it.  
+Standards software development best practices will apply and it's important to note that things could change rapidly requiring maintenance on your code.  
+Clearly, another level of organization is needed. That's the purpose of deployment manager.  
+Deployment manager uses a system of highly structured templates and configuration files to document the infrastructure in an easily readable and understandable format.  
+Deployment manager conceals the actual Cloud API calls. So you don't need to write code and can focus on the definition of the infrastructure.  
+In this module, we cover how to use deployment manager to automate the deployment of infrastructure, and how to use GCP marketplace to launch infrastructure solutions.  
+You will use Deployment Manager or Terraform to deploy a VPC network, a firewall rule, and virtual machine instances in the lab of this module. I will also demonstrate how to launch infrastructure solutions using GCP marketplace. Let's start by talking about Deployment Manager. 
+
+### Deployment Manager
+
+So far, you've been creating GCP resources using the GCP console and Cloud Shell. I recommend the GCP console when you are new to using a service or if you prefer a UI.  
+Cloud Shell works best when you are comfortable using a specific service and you want to quickly create resources using the command line.  
+**Deployment Manager** takes this one step further. Deployment Manager is an infrastructure deployment service that automates the creation and management of GCP resources for you. You just specify all the resources needed for your application in a declarative format and deploy your configuration. This deployment can be repeated over and over with consistent results, and you can delete a whole deployment with one command or click. The benefit of a **declarative approach** is that it allows you to specify what the configuration should be and let the system figure out the steps to take Instead of deploying each resource separately. You specify the set of resources which compose the application or service allowing you to focus on the application.
+
+Unlike Cloud Shell Deployment Manager will deploy resources **in parallel**. You can even abstract parts of your configuration into individual building blocks or templates that can be used for other configurations.
+Deployment Manager uses the underlying API's of each GCP service to deploy your resources.  
+This enables you to deploy almost everything we have seen so far from instances, instance templates and groups. To VPC networks, firewall rules, VPN tunnels, cloud routers, and load balancers. For a full list of supported resource types see the link sections of this video. Before you get into the lab, let me walk you though a quick example that shows how Deployment Manager can be used.  
+To set up an auto mode network with an HTTP firewall rule. I could put this whole deployment into one single configuration. However, it's useful to **parameterize your configuration with templates**. Specifically, we are going to create one template for the auto mode network and one for the firewall rule. Therefore, if we want to create either of these resources somewhere else later on, we can use those templates. Let's start with the auto mode network template which we can write in Jinja too or Python. Now each resource must contain a name type and properties for the name. I'm using an environment variable to get the name from the top level configuration. Which makes this template more flexible for the type I'm defining the API for a VPC network, which is computed that we want.network. You can find all supported types in the documentation or query them within Cloud Shell as you will explore in the upcoming lab.
+
+By definition, an auto mode network automatically **creates a subnetwork in each region**. Therefore, I am setting the auto create subnetworks property to true. Next, let's write the template for the HTTP firewall rule.  
+For the name, I'm again using an environment variable to get the name from the top level configuration.  
+For the type, I'm defining the API for a firewall rule, which is computed v1 firewall. The properties section contains the network. I want to apply this firewall rule to the source IP ranges and the protocols and ports that are allowed except for the source IP ranges. I'm defining these properties as template properties. I will provide the exact properties from the top level configuration, which makes this firewall rule extremely flexible. Essentially I can use this firewall rule template for any network and any protocol report combination.  
+Next let's write the top level configuration in yaml's index. I start by importing the templates that I want to use in this configuration, which are autonetwork.jinja and firewall.jinja. Then I define the auto mode network by giving it the name mynetwork and leveraging the autonetwork.Jinja template. I could create more auto mode networks in this configuration with other names or simply reuse this template in other configurations later on.  
+Now I define the firewall rule by giving it a name, leveraging the firewall.jinja template, referencing my network and defining the IP protocol and port. I can easily add Add other ports such as 4434, https or 22 for SSH traffic. Using the self link reference for the network name ensures that the VPC network is created before the firewall rule. This is very important because Deployment Manager creates all the resources in parallel. Unless you use references, you would get an error without the reference because you cannot create a firewall rule for a non existing network. Now there are other infrastructure automation tools in addition to Deployment Manager that you can use in GCP.  
 You can also use Terraform, Chef, Puppet Ansible, or Packer. All of these tools allow you to treat your infrastructure like software, which helps you decrease costs, reduce risk, and deploy faster by capturing infrastructure as code. You might recognize some of these tools because they work across many cloud service providers. I recommend that you provision and manage resources on Google Cloud with the tools you already know. That's why in the upcoming lab, you'll have the choice of using Deployment Manager or terraform, to automate the deployment of infrastructure. For more information on each of these tools, see the Links section of this video.
 
+### Lab Review: Automating the Infrastructure of networks using Deployment Manager
 
 In this lab you created a deployment manager configuration and template to automate the deployment of GCP infrastructure. Templates can be very flexible because of their environment and template variables. Therefore, the benefit of creating templates is that they can be reused across many configurations. You can use the template that you created as a starting point for future deployments. You can stay for lab walkthrough. But remember, the GCP's user interface can change, so your environment might look slightly different. So here I am in the GCP console. And the first thing I want to do is I want to verify that the deployment manager API is enabled. I can check that by going to the navigation menu, going to APIs & Services, and Library. And in here I'm going to search for deployment manager.
 I'm looking for this one right here V2 API. and I'm going to be looking at the status. And it says that the API is enabled. If it wasn't, there would be an enable button here, and then you could do that. Now, we're going to be using Cloud Shell. I want to go ahead and activate Cloud Shell, click up here. It's a new project, so I'm going to have to click START CLOUD SHELL. And the first thing I'm going to do is I'm going to just going to create us some folders in here. I'm just going to create a directory, and we're going to navigate to that directory. So let me do that. And then I'm going to launch the code editor. You can access that with the pencil icon over here, so you can launch code editor. And this is going to make it much more interactive for us to write our configurations and templates within here, because we can actually see the files. Rather than using Nano and going back and forth between files, we just get a UI to write code. And we still get the Cloud Shell command line below. So we can still interface with that, which we're going to to actually deploy this.
@@ -374,6 +519,7 @@ And it's now looking into this. The preview flag just gives you a preview of how
 So here we can it see would create two instances, a network and a firewall rule. So now if I run the update command, it actually commits this preview. And if you hadn't run the preview, you could've just directly run this command without the preview, that would've also created it. But this kind of lets you, again, preview with sort of a dry run. So that you understand what the different resources are that are going to be created. Now, we're going to wait for this to complete, and then we're going to come back and verify this deployment. So here we can see that all of the resources were created, at least that's shown to us in cloud shell. We can actually also go to the GCP console, and you could do this while all of this is being deployed. So if I switch tabs here, go to the GCP console and scroll down to find deployment manager within the navigation menu right here, I will see my deployment in here. I should be looking for dminfra, you can see it's completed. And if I click on it, I see all of the different resources that are being created. So you could watch this while this configuration is deployed. And then you can click on here and see all of the different properties, and types, and names that you have defined. Now, you can also see the actual files that you have, the configuration as well as the imported files. Now, if anything goes wrong while you are deploying, you will get error messages. I recommend you use those to troubleshoot the issue. And then if you want to redeploy, you're going to have to delete the deployment. You could do that either right here by clicking the delete button. Or from Cloud Shell, you can run the delete command that's provided in the lab instructions. And if you really can't troubleshoot the issue, I recommend you take a look at the finished configuration and template that we provided. And kind of just compare and contrast what's different to your configuration. Now, we've created all the resources, but let's verify that they're actually there. So I'm going to go navigate and verify that I have this network, this firewall rule, and these two instances. So if I go to the navigation menu and then VPC Network, you'll see that I have the my network, the default that was already there. And then if I click on Firewall rules, you can see the new firewall rule that I've added. I can also navigate to compute engine. And we should see the two instances, mynet.uvm and mynet.usvm. And since they're both in the same network, I should be able, given the firewall rules that I created, to now ping these instances on their internal IP addresses. So let me grab mynet.uvm's internal IP address. Let me SSH to mynet.usvm. And that's the last thing we'll do just to verify that these are on the same network and that I have established these firewall rules.
 And we can see that that works. So that's the end of the lab.
 
+### Lab Review: Automating the Infrastructure of networks using Terraform
 
 In this lab, you created a Terraform configuration with a module to automate the deployment of GCP infrastructure. As your configuration changes, Terraform can create incremental execution plans, which allows you to build your overall configuration step by step. The instance module allowed you to reuse the same resource configuration for multiple resources while providing properties as input variables. You can leverage the configuration and module that you created as a starting point for future deployments.
 You can stay for a lap walk through but remember that GCP's user interface can change, so your environment might look slightly different.
@@ -400,28 +546,63 @@ It's actually going to walk us through those resources one more time, but now it
 So here, we can see that all of the resources were created. As I mentioned, the network gets created first. And once that's completed you can see one of the instances the firewall rule, and the other instances are start to be created. The instances were created really quickly. And then we're just waiting for the firewall rule to be created. Now, let's actually verify that all of these resources were created by navigating back to the gcp console. So I'm going to switch tabs here and go to the navigation menu and first go to VPC Network. And every network comes by default with a default network that is here and here we can see the my network that we created which is an ottoman network. It can also go to the firewall rules and I'll see that my custom final rule with the non-default file rule has been created. And that should allow me to ping between the two instances that I have in a network. I have icmp traffic allowed. So I should be able to ping both on the external IP address, but even the internal IP address because both of these instances on the same network. So let's try that out. I'm going to go back to navigation menu, go to compute engine.
 And I'm going to grab the IP address of this first VM and then SSH to this other VM and then we'll try to ping that instance. So here I am. Let me run ping three times on that IP address. And we can see that all the packets were transmitted. So this should work again because both VM instances are on the same network and the firewall rule that we created allows icmp traffic. And that's the end of the lab.
 
+### GCP Marketplace
 
-Let me show you how to launch Infrastructure solutions on GCP Marketplace. 
-My goal is to deploy a lamp stack to a single Compute Engine instance. A LAMP stack consists of Linux, Apache HTTP Server, MySQL, and PHP. 
+Let me show you how to launch Infrastructure solutions on **GCP Marketplace.**   
+My goal is to deploy a lamp stack to a single Compute Engine instance. A LAMP stack consists of Linux, Apache HTTP Server, MySQL, and PHP.  
 So here I am in the GCP console and let's go ahead and navigate to the GCP Marketplace. I'm going to go to the navigation menu and just go to marketplace. Now, I have lots of different options available. 
-There are some filters on the left that could search by making search directly. There's some featured solutions that are in here. So there's really a lot of stuff to choose from. In my case, I'm going to search for LAMP stack because that's what I want to create.
+There are some filters on the left that could search by making search directly. There's some featured solutions that are in here. So there's really a lot of stuff to choose from. In my case, I'm going to search for LAMP stack because that's what I want to create.  
+
 Here, I actually have different options, there different providers, and that's really what that means. The different providers will offer these services.
 I'm going to click the first one that's in here. Now, I have the configuration page. I see the package contents. Tells me that what LAMP is again. I can see they're also here, the operating system is Linux. 
 It has Apache installed and have PHP and I have MySQL. We should also basically have HTTP enabled and we'll see that in a second. There's no usage fee for this service, if there was it all be built together. We have an instance billing. This is just an n1-standard-1 instance along with its persistent disk, and there's a sustained use discount. So if I click on Launch on Compute Engine, I get the actual VM configuration page. 
-I could now change the instance type if I wanted. I could create a larger instances, small instance, I could customize an instance, and now, because this is an Apache HTTP, we can see that the HTTP firewall rule is also set up. I also have some networking options if we want place this somewhere else, I even have some extra options if I want to install PHP Myadmin, all that is available to me here. I may have logging options for Stackdriver to enable Stackdriver logging and monitoring, and I can do that directly in here. So it's just like a regular VM instance page. So I'm going to go and click Deploy, and when I do that, it's going to navigate us to Deployment Manager. 
-You can see all of the configuration as well as all the imported files are just displayed there that are used throughout this deployment. So we can see again that the solutions on marketplace are just Deployment Manager configurations that are already set up for you to use so that you don't have to recreate them. I also see that a passwords being generated, a VM is being generated. I can click on that and get some more information about it. We can see that we use in software and we have that HTTP firewall rules. So just TCPAD that's being enabled here. So we can just wait for that. The instance is up. It's just configuring some more software. Then once it's up and running, we can get some more information about that LAMP stack that we just have generated. Second, click back on LAMP, still pending. But once it's up and running, we'll have some more information here. Let's see. Doesn't have the address yet. It's still pending, and there we go. So we have an address, we have a user with password, the instance, zone, all the type information. We can visit the site, we can SSH to this. We have some next steps. We could open also HTTPS traffic, change the password, assign a static external IP address rather than the current default if a ephemeral IP address. We can learn more about the software that's being installed. But we can also look at this from a Compute Engine perspective. So if I navigate to Compute Engine, I'll also see the instance right here. That's how easy it is to launch Infrastructure solutions on GCP marketplace.
+I could now change the instance type if I wanted. I could create a larger instances, small instance, I could customize an instance, and now, because this is an Apache HTTP, we can see that the HTTP firewall rule is also set up. I also have some networking options if we want place this somewhere else, I even have some extra options if I want to install PHP Myadmin, all that is available to me here. I may have logging options for Stackdriver to enable Stackdriver logging and monitoring, and I can do that directly in here. So it's just like a regular VM instance page. So I'm going to go and click Deploy, and when I do that, it's going to navigate us to Deployment Manager.  
 
-BigQuery is GCP's serverless, highly scalable, and cost effective Cloud data warehouse. It's a petabyte scale data warehouse that allows for super-fast queries using the processing power of Google's infrastructure. Because there's no infrastructure for you to manage, you can focus on uncovering meaningful insights using familiar SQL, without the need for the database administrator. BigQuery is used by all types of organizations, and there's a free usage tier to help you get started. For more information, see the links section of this video. You can access BigQuery by using the GCP console, by using the command line tool, or by making calls to the BigQuery REST API, using the variety of client libraries such as Java,.NET or Python. There are also several third-party tools that you can use to interact with BigQuery, such as visualizing the data, or loading the data. Here's an example of a query on the table with over 100 billion rows. This query processes over 4.1 terabyte, but takes less than a minute to execute. The same query would take hours if not days through a serial execution.
+You can see all of the configuration as well as all the imported files are just displayed there that are used throughout this deployment. So we can see again that the solutions on marketplace are just Deployment Manager configurations that are already set up for you to use so that you don't have to recreate them. I also see that a passwords being generated, a VM is being generated. I can click on that and get some more information about it. We can see that we use in software and we have that HTTP firewall rules. So just TCPAD that's being enabled here. So we can just wait for that. The instance is up. It's just configuring some more software. Then once it's up and running, we can get some more information about that LAMP stack that we just have generated.  
+Second, click back on LAMP, still pending. But once it's up and running, we'll have some more information here. Let's see. Doesn't have the address yet. It's still pending, and there we go. So we have an address, we have a user with password, the instance, zone, all the type information. We can visit the site, we can SSH to this. We have some next steps. We could open also HTTPS traffic, change the password, assign a static external IP address rather than the current default if a ephemeral IP address. We can learn more about the software that's being installed. But we can also look at this from a Compute Engine perspective. So if I navigate to Compute Engine, I'll also see the instance right here. That's how easy it is to launch Infrastructure solutions on GCP marketplace.
 
-Let's learn a little bit about Cloud Dataflow. Cloud Dataflow is a managed service for executing a wide variety of data processing patterns. It's essentially a fully managed service for transforming and enriching data in stream and batch modes with equal reliability and expressiveness. With cloud dataflow, a lot of the complexity of infrastructure setup and maintenance is handled for you. Its build on Google cloud, Infrastructure and auto scales to meet the demands of your data pipeline, allowing it to intelligently scale to millions of queries per second. Cloud Dataflow supports fast, simplified pipeline development via expressive SQL, Java, and Python a-pis in the Apache Beam SDK, which provides a rich set of windowing and session analysis primitives, as well as an ecosystem of source and sink connectors. Cloud Dataflow is also tightly coupled with other GCP services like Stackdriver. You can set up priority alerts and notifications to monitor your pipeline and the quality of data coming in and out. This diagram shows some example use cases of cloud dataflow. As I just mentioned, cloud dataflow processes stream and batch data. This data could come from other GCP services like Cloud datastore or cloud pub sub, which is Google's messaging and publishing service. The data could also be ingested from third-party services like Apache Avro and Apache Kafka. After you transform the data with cloud dataflow, you can analyze it in BigQuery, AI platform, or even Cloud Big table. Using Data Studio, you can even build real-time dashboards for IoT devices.
+## Managed Services
 
-Let's learn a little bit about Cloud Dataprep. Cloud Dataprep is an Intelligent Data Service for visually exploring, cleaning, and preparing structured and unstructured data for analysis reporting and Machine Learning. Because Cloud Dataprep is serverless and works at any skill, there's no infrastructure to deploy are manage. Your next ideal data transformation is suggested and predicted with each UI input so you don't have to write code. With automatic schema, data types, possible joins and anomaly detection, you can skip time-consuming Data Profiling and focus on Data Analysis. Cloud Dataprep is an integrated partner service operated by Trifacta and based on their industry leading Data Preparation Solution Trifacta Wrangler. Google works closely with Trifacta to provide a seamless user experience that removes the need for upfront software installation, separate licensing costs or ongoing operational overhead. Cloud Dataprep is fully-managed and scales on demand to meet your growing data preparation needs so you can stay focused on analysis. Here's an example of a Cloud Dataprep architecture. As you can see, Cloud Dataprep can be leveraged to prepare raw data from BigQuery, Cloud Storage, or a file upload before ingesting it into a transformational pipeline like Cloud Data flow. The refined data can then be exported to BigQuery or Cloud Storage for analysis and machine learning.
+In the last module we discussed how to automate the creation of infrastructure. As an alternative to infrastructure automation you can eliminate the need to create infrastructure by leveraging a managed service. 
 
-Let's learn a little bit about Cloud Dataproc. Cloud Dataproc is a fast easy to use fully managed Cloud service for running Apache Spark and Apache Hadoop clusters in a simpler way. You only pay for the resources you use with per second billing. If you leverage preemptible instances in your cluster, you can reduce your costs even further. Without using Cloud Dataproc, it can take from five to 30 minutes to create Spark and Hadoop clusters On-premise or through other infrastructure as a service providers. Cloud Dataproc clusters are quick to start, scale, and shut down with each of these operations taking 90 seconds or less on average. This means you can spend less time waiting for clusters and more hands-on time working with your data. Cloud Dataproc has built-in integration with other GCP services such as BigQuery, Cloud Storage, Cloud Bigtable, Stackdriver Logging, and Stackdriver monitoring. This provides you with the complete data platform rather than just a Spark or Hadoop cluster. As a managed service, you can create clusters quickly, manage them easily, and save money by turning clusters off when you don't need them. With less time and money spent on administration, you can focus on your jobs and your data. If you're already using Spark, Hadoop, Pig or Hive you don't even need to learn new tools or API's is to use Cloud Dataproc. This makes it easy to move existing projects into Cloud Dataproc without redevelopment. Now, Cloud Dataproc and Cloud Dataflow can both be used for data processing, and there's overlap in their batch and streaming capabilities. So how do you decide which product is a better fit for your environment? But first ask yourself whether you have dependencies on specific tools or packages in the Apache Hadoop or Spark ecosystem. If that's the case, you'll obviously want to use Cloud Dataproc. If not, ask yourself whether you prefer a hands-on or DevOps approach to Operations or a hands-off or serverless approach. If you opt for the DevOps approach, you want to use Cloud Dataproc. Otherwise, use Cloud Dataflow.
+**Managed services** are partial or complete solutions offered as a service. They exist on a continuum between platform as a service and software as a service depending on how much of the internal methods and controls are exposed. 
+
+Using a managed service allows you to outsource a lot of the administrative and maintenance overhead to Google if your application requirements fits within the service offering. 
+
+In this module, we give you an overview of **BigQuery, Cloud Dataflow, Cloud Dataprep by Trifecta and Cloud Dataproc.** Now, all of these services are for data analytics purposes. And since that's not the focus of this course series, there won't be any labs on this module. Instead we'll have a quick demo to illustrate how easy it is to use managed services.
+
+Let's start by talking about BigQuery.
+
+### BigQuery
+
+**BigQuery** is GCP's serverless, highly scalable, and cost effective Cloud data warehouse. It's a petabyte scale data warehouse that allows for super-fast queries using the processing power of Google's infrastructure. Because there's no infrastructure for you to manage, you can focus on uncovering meaningful insights using familiar SQL, without the need for the database administrator. BigQuery is used by all types of organizations, and there's a free usage tier to help you get started. For more information, see the links section of this video. You can access BigQuery by using the GCP console, by using the command line tool, or by making calls to the BigQuery REST API, using the variety of client libraries such as Java,.NET or Python. There are also several third-party tools that you can use to interact with BigQuery, such as visualizing the data, or loading the data. Here's an example of a query on the table with over 100 billion rows. This query processes over 4.1 terabyte, but takes less than a minute to execute. The same query would take hours if not days through a serial execution.
+
+### Cloud Dataflow
+
+Let's learn a little bit about Cloud Dataflow.  
+**Cloud Dataflow** is a managed service for executing a wide variety of data processing patterns. It's essentially a fully managed service for transforming and enriching data in stream and batch modes with equal reliability and expressiveness. With cloud dataflow, a lot of the complexity of infrastructure setup and maintenance is handled for you. Its build on Google cloud, Infrastructure and auto scales to meet the demands of your data pipeline, allowing it to intelligently scale to millions of queries per second. 
+
+Cloud Dataflow supports fast, simplified pipeline development via expressive SQL, Java, and Python a-pis in the Apache Beam SDK, which provides a rich set of windowing and session analysis primitives, as well as an ecosystem of source and sink connectors. Cloud Dataflow is also tightly coupled with other GCP services like Stackdriver. You can set up priority alerts and notifications to monitor your pipeline and the quality of data coming in and out. This diagram shows some example use cases of cloud dataflow. 
+
+As I just mentioned, **cloud dataflow processes stream and batch data**. This data could come from other GCP services like Cloud datastore or cloud pub sub, which is Google's messaging and publishing service. The data could also be ingested from third-party services like Apache Avro and Apache Kafka. After you transform the data with cloud dataflow, you can analyze it in BigQuery, AI platform, or even Cloud Big table. Using Data Studio, you can even build real-time dashboards for IoT devices.
+
+### Cloud Dataprep
+
+Let's learn a little bit about Cloud Dataprep.  
+**Cloud Dataprep** is an Intelligent Data Service for **visually exploring, cleaning, and preparing structured and unstructured data** for analysis reporting and Machine Learning. Because Cloud Dataprep is serverless and works at any skill, there's no infrastructure to deploy are manage. Your next ideal data transformation is suggested and predicted with each UI input so you don't have to write code. With automatic schema, data types, possible joins and anomaly detection, you can skip time-consuming Data Profiling and focus on Data Analysis. 
+
+Cloud Dataprep is an integrated partner service operated by Trifacta and based on their industry leading Data Preparation Solution Trifacta Wrangler. Google works closely with Trifacta to provide a seamless user experience that removes the need for upfront software installation, separate licensing costs or ongoing operational overhead. Cloud Dataprep is fully-managed and scales on demand to meet your growing data preparation needs so you can stay focused on analysis. Here's an example of a Cloud Dataprep architecture. As you can see, Cloud Dataprep can be leveraged to prepare raw data from BigQuery, Cloud Storage, or a file upload before ingesting it into a transformational pipeline like Cloud Data flow. The refined data can then be exported to BigQuery or Cloud Storage for analysis and machine learning.
+
+### Cloud Dataproc
+
+Let's learn a little bit about Cloud Dataproc.  
+**Cloud Dataproc** is a fast easy to use fully managed Cloud service for running Apache Spark and Apache Hadoop clusters in a simpler way. You only pay for the resources you use with per second billing. If you leverage preemptible instances in your cluster, you can reduce your costs even further. Without using Cloud Dataproc, it can take from five to 30 minutes to create Spark and Hadoop clusters On-premise or through other infrastructure as a service providers. Cloud Dataproc clusters are quick to start, scale, and shut down with each of these operations taking 90 seconds or less on average. This means you can spend less time waiting for clusters and more hands-on time working with your data. 
+
+Cloud Dataproc has built-in integration with other GCP services such as BigQuery, Cloud Storage, Cloud Bigtable, Stackdriver Logging, and Stackdriver monitoring. This provides you with the complete data platform rather than just a Spark or Hadoop cluster. As a managed service, you can create clusters quickly, manage them easily, and save money by turning clusters off when you don't need them. With less time and money spent on administration, you can focus on your jobs and your data. If you're already using Spark, Hadoop, Pig or Hive you don't even need to learn new tools or API's is to use Cloud Dataproc. This makes it easy to move existing projects into Cloud Dataproc without redevelopment. 
+
+Now, Cloud Dataproc and Cloud Dataflow can both be used for data processing, and there's overlap in their batch and streaming capabilities. So **how do you decide which product is a better fit** for your environment? But first ask yourself whether you have dependencies on specific tools or packages in the Apache **Hadoop** or **Spark** ecosystem. If that's the case, you'll obviously want to use Cloud Dataproc. If not, ask yourself whether you prefer a hands-on or DevOps approach to Operations or a hands-off or serverless approach. If you opt for the **DevOps** approach, you want to use Cloud Dataproc. Otherwise, use Cloud Dataflow.
+
+### Demo: Cloud Dataproc
 
 Let me show you how to create a Cloud Dataproc cluster, modify the number of workers in the cluster, and submit a simple Apache Spark job. So here I'm in the GCP console. The first thing I want to do is navigate to Cloud Dataproc. That's pretty far down, so let's navigate down to Big Data, we have Dataproc. It's going to check if there's already a cluster which we don't have so we can go ahead and now create a cluster.
 We could start off by defining the name. Let's just call it our example-cluster. Then I'm not going to change any of the other settings but just kind of highlight them. We can define where it is stored, what regions and zones. What kind of mode, which defines the relationship between nodes and workers. We want to have one master and workers. You can also have a high availability setting, where you have three masters and then define the name of the workers. You have the machine types available for the master nodes, so four virtual CPUs. Then we also have the workers. There also can be four virtual CPUs, there's going to be two of them. So in total disk itself is going to create 12 virtual CPUs. If we go to the advanced options, we could make some of these nodes preemptible. We can define the network, the subnetworks, network tags in terms of firewall rules. Make this internal IP only, a Cloud Storage bucket for staging image. You can see there are lots of other options all the way down to the specific encryption. So let me go ahead and just create this with the default configuration. Click Create, and again this is going to create a bunch of different machines for us now. If I open another tab and actually navigate to Compute Engine, we will see all those instances being generated for us. So I can go to Compute Engine. So even though this is a managed service, we can see all of the instances there already. So we have the master and we have our two worker nodes. They just take the name that I specified and then touches M for master, W for worker and starts with a zero index. So if I come back here, I can refresh. The clustered self is still being initialized. The software that's being installed and all the setup that's happening in the back end. Once the cluster's ready, we can go ahead and we could maybe resize that. We see that we currently have two worker nodes and we could change it to something else like maybe three worker nodes. Then after that we're actually going to go ahead and submit a job for this. So here we are just took another minute or two, we have the cluster up and running. I can go click on the cluster itself and I can get more information about it. So here we have all sorts of monitoring setup. If I go to the VM instances I'll see those. I can SSH the master, any jobs I have which currently we don't have any yet. If I click on the configuration, we'll see that we currently have two worker nodes. If I click on edit, I can change that. So let's say we want three worker nodes, can change it to three and hit Save. It's now going to go ahead and request that update for us. So it's going to create another worker and it's also going to update the master, let the master to know that there's another worker out there. So when we submit jobs, all the workers are being leveraged. So if I change back to Compute Engine, here we see the new workers already up and running. If I come back here and refresh, you can see that the cluster itself is still being updated. This again should just take a minute or two, pretty fast. Again this is a managed service but we can see the actual back end instances that are being leveraged. So here we can see the cluster update is complete. I can click on it again and go to the configuration and we can see that we now have three worker nodes. So time to submit a job. Let's go to the job section and click on submit a job. I can leave the job ID, leave the region. Obviously you want to select the cluster, especially if I had multiple clusters. The job type in this case is going to be Spark. I'm going to define a main class. This is just from the example class. What we're going to do actually is we're going to provide an example to calculate the value of Pi. So arguments, I'm just going to give it a thousand and JAR file, I'm going to provide that as well. Then I can review that, there's lots of other things I have properties, labels. So I'm all set. So I'm going to click submit on this job. It's going to go ahead and submit that. That job is now running that's the status symbol that's on here right now. I can go click on that job itself. Here I can see the job actually running. I can also review the configuration one more time. So here see all the different settings that I just specified. We can go back to output. Again this is now going to do a rough calculation for us to estimate the value of Pi. So we'll just wait for that. Here we go. It says that Pi is roughly this. So the job is now complete. If this is all that we wanted to do, we could go ahead and delete the cluster. Otherwise, we could submit more jobs. In our case, we're done. So let's go back to the cluster, select that, and click Delete. It's going to lead also all the data, can't undo this. Okay. Click that, and you can go to Compute Engine, refresh here. We can already see that all of these are now being stopped and will then be deleted. That way you can easily spin up clusters and delete them so that you're only being charged for the uses of the cluster while you need it. So we can wait around for this to be deleted. So that just took another minute or two. We can see that the cluster itself was deleted and if I go to the instances, we can also see that all the instances are gone. That's how easy it is to create a Cloud Dataproc cluster and submit a job to that cluster.
-
-In this module, we provided you with an overview of managed services for data processing in GCP, namely BigQuery Cloud Dataflow, Cloud Dataprep, and Cloud Dataproc. Managed services allow you to outsource a lot of the administrative and maintenance overhead to Google, so you can focus on your workloads instead of infrastructure. Speaking of Infrastructure, most of the services that we covered our serverless. Now, this doesn't mean that there aren't any actual servers processing your data. Serverless means that servers or compute engine instances are obfuscated so that you don't have to worry about the Infrastructure. Cloud Dataproc isn't a serverless service because you were able to view and manage the underlying master and worker instances.
-
-Thank you for taking the Architecting with Google Compute Engine Core series. I hope you have a better understanding of the comprehensive and flexible infrastructure and platform services provided by GCP. I also hope that the demos and labs made you feel more comfortable with using the different GCP services that we covered. Now it's your turn. Go ahead and apply what you've learned by architecting your own Infrastructure in GCP. See you next time.
